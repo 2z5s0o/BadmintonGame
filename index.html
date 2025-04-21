@@ -22,20 +22,22 @@
 				padding: 20px;
 				border-radius: 10px;
 				text-align: center;
-				display: none;
 			}
-			#pause.show {
-				display: block;
+			#pause.hide {
+				display: none;
 			}
 		</style>
 	</head>
 	<body>
 		<canvas id="canvas"></canvas>
-		<div id="pause" class="show">
+		<div id="pause">
 			<p>Paused</p>
 			<p>Press P to resume</p>
 		</div>
 		<script>
+			// Load the sound files:
+			var sound_swish = new Audio("swish.mp3");
+			var sound_hit = new Audio("hit.mp3");
 			// The canvas where we will draw the scene:
 			var canvas = document.getElementById('canvas');
 			// The 2D context of the canvas, used for drawing into it:
@@ -63,6 +65,16 @@
 				// Draw a horozontal line in world coordinates
 				rect(xmin - width/2, y - width/2, xmax + width/2, y + width/2);
 			}
+			function line(x1, y1, x2, y2, width) {
+				// Draw a line in world coordinates
+				var [x1s, y1s] = xf(x1, y1);
+				var [x2s, y2s] = xf(x2, y2);
+				ctx.lineWidth = width;
+				ctx.beginPath();
+				ctx.moveTo(x1s, y1s);
+				ctx.lineTo(x2s, y2s);
+				ctx.stroke();
+			}
 			function oval(x, y, w, h) {
 				// Draw an oval in world coordinates
 				var [x1, y1] = xf(x - w/2, y - h/2);
@@ -77,6 +89,7 @@
 					this.bounds = {minx: minx, miny: miny, maxx: maxx, maxy: maxy};
 					this.move = {up: 0, down: 0, left: 0, right: 0};
 					this.speed = 10;
+					this.angle = 0;
 				}
 				animate(dt) {
 					// Animate the person
@@ -100,6 +113,18 @@
 					// Draw the person
 					ctx.fillStyle = "hsl(60, 70%, 80%)";
 					oval(this.pos.x, this.pos.y, 1, 0.5);
+					// Draw the racket
+					ctx.fillStyle = "hsl(0, 70%, 20%)";
+					ctx.strokeStyle = "hsl(0, 70%, 20%)";
+					var [dx, dy] = [1.5 * Math.cos(this.angle * Math.PI / 180), 0.5 + 0.5 * Math.sin(this.angle * Math.PI / 180)];
+					line(this.pos.x, this.pos.y + 0.2, this.pos.x + dx, this.pos.y + dy, 3);
+					oval(this.pos.x + dx, this.pos.y + dy, 0.6, 0.3);
+				}
+				rotate(delta) {
+					// Rotate the racket
+					this.angle += delta / 5;
+					if (this.angle > 360) this.angle -= 360;
+					if (this.angle < 0) this.angle += 360;
 				}
 				up(v) {
 					this.move.up = v;
@@ -134,10 +159,12 @@
 				}
 			}
 
+			// The game objects:
 			var player = new Person(2.5, -7.5, -12, -24, 12, -0.5);
 			var opponent = new Person(-2.5, 7.5, -12, 0.5, 12, 24);
 			var objects = [player, opponent];
-			var animating = false;
+			// The game state (current time, paused, etc.):
+			var paused = true;
 			var time;
 
 			function draw() {
@@ -172,7 +199,7 @@
 				// Net
 				ctx.fillStyle = "hsl(0, 80%, 50%)";
 				yline(-10, 10, 0, thick);
-				// Draw the objects
+				// Draw all the objects
 				for (var obj of objects) {
 					obj.draw();
 				}
@@ -181,21 +208,25 @@
 				// Resize the canvas to fill the window
 				canvas.width  = window.innerWidth;
 				canvas.height = window.innerHeight;
-				if (!animating) {
-					// Draw the scene once if not animating
-					// (if animating it will be drawn in the animate function)
+				if (paused) {
+					// Draw the scene once if we are paused
+					// (if not, it will be drawn in the animate function)
 					draw();
 				}
 			}
 			function animate(newtime) {
-				var dt = (newtime - time) / 1000;
+				// Animate the scene by advancing time
+				var dt = (newtime - time) / 1000; // Time passed since last frame in seconds
 				time = newtime;
-				if (animating) {
+				if (!paused) {
+					// Only animate if not paused
 					if (dt > 0) {
 						for (var obj of objects) {
+							// Animate each object
 							obj.animate(dt);
 						}
 					}
+					// Draw the new scene
 					draw();
 					// Request the next animation frame
 					requestAnimationFrame(animate);
@@ -203,23 +234,30 @@
 			}
 			function pause() {
 				// Pause the game
-				animating = false;
+				paused = true;
 				time = undefined;
 				player.stop();
-				document.exitPointerLock();
-				document.getElementById('pause').classList.add('show');
+				document.exitPointerLock(); // release control of the mouse
+				document.getElementById('pause').classList.remove('hide');
 			}
-			async function resume() {
+			function resume() {
 				// Resume the game
-				canvas.requestPointerLock();
-				document.getElementById('pause').classList.remove('show');
-				animating = true;
-				animate();
+				canvas.requestPointerLock(); // Take control of the mouse
+				document.getElementById('pause').classList.add('hide');
+				paused = false;
+				animate(); // start animating
 			}
 			function keydown(event) {
 				// Handle keydown events
 				console.debug(event.type, event.key, event.code);
 				switch (event.code) {
+					case "Space":
+						if (!paused) {
+							// Play the sound
+							sound_hit.currentTime = 0;
+							sound_hit.play();
+						}
+						break;
 					case "KeyW":
 					case "ArrowUp":
 						player.up(1);
@@ -237,16 +275,16 @@
 						player.right(1);
 						break;
 					case "KeyP":
-						if (animating) {
-							// Pause the game
-							pause();
-						} else {
+						if (paused) {
 							// Resume the game
 							resume();
+						} else {
+							// Pause the game
+							pause();
 						}
 						break;
 					case "Escape":
-						if (animating) {
+						if (!paused) {
 							// Pause the game
 							pause();
 						}
@@ -277,16 +315,43 @@
 			}
 			// Redraw the scene the correct size whenever the window is resized:
 			window.addEventListener('resize', resize);
+			// Handle keyboard events:
 			window.addEventListener('keydown', keydown);
 			window.addEventListener('keyup', keyup);
-			window.addEventListener("blur", pause);
-			document.getElementById("pause").addEventListener('click', resume);
 			window.addEventListener('mousemove', function(event) {
-				if (animating) {
+				// Handle mouse movement events
+				if (!paused) {
+					player.rotate(event.movementX);
 					console.debug(event.type, event.movementX, event.movementY);
 				}
 			});
+			window.addEventListener('mousedown', function(event) {
+				// Handle mouse button events
+				if (!paused) {
+					switch (event.button) {
+						case 0: // Left button
+							sound_swish.currentTime = 0;
+							sound_swish.play();
+							break;
+						case 2: // Right button
+							// Not used
+							break;
+					}
+				}
+			});
+			// Pause if the window loses focus:
+			window.addEventListener("blur", pause);
+			document.addEventListener('pointerlockchange', function() {
+				// Make sure to pause if the user presses escape
+				if (!paused && !document.pointerLockElement) {
+					pause();
+				}
+			});
+			// Resume if the user clicks on the pause popup:
+			document.getElementById("pause").addEventListener('click', resume);
+			// Set the initial size of the canvas:
 			resize();
+			// Draw the couurt:
 			draw();
 		</script>
 	</body>
