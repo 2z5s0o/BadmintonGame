@@ -37,7 +37,7 @@
 		<canvas id="canvas"></canvas>
 		<div id="pause" class="popup">
 			<h2>Paused</h2>
-			<p>Press P or click<br>to resume</p>
+			<p>Click here to resume</p>
 		</div>
 		<script>
 			// Load the sound files:
@@ -281,15 +281,6 @@
 					case "KeyD":
 					case "ArrowRight":
 						player.right(1);
-						break;
-					case "KeyP":
-						if (paused) {
-							// Resume the game
-							resume();
-						} else {
-							// Pause the game
-							pause();
-						}
 						break;
 					case "Escape":
 						if (!paused) {
