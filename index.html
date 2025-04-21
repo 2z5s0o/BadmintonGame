@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+	<head>
+		<title>Badminton</title>
+		<style>
+			body {
+				font-family: verdana, sans-serif;
+				font-size: 15px;
+				/* Prevent the window scrolling */
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="canvas"></canvas>
+		<script>
+			// The canvas where we will draw the scene:
+			var canvas = document.getElementById('canvas');
+			// The 2D context of the canvas, used for drawing into it:
+			var ctx = canvas.getContext("2d");
+			// The camera object, used to transform world coordinates to screen coordinates:
+			var camera = { x: 0, y: 0, zoom: 1 };
+			function xf(x, y) {
+				// Transform (x, y) to screen coordinates
+				var ymin = -25;
+				var ymax = 25;
+				var scale = canvas.height / (ymax - ymin);
+				return [x * scale + canvas.width/2, (-y - ymin) * scale];
+			}
+			function rect(xmin, ymin, xmax, ymax) {
+				// Draw a rectangle in world coordinates
+				var [x1, y1] = xf(xmin, ymin);
+				var [x2, y2] = xf(xmax, ymax);
+				ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+			}
+			function xline(x, ymin, ymax, width) {
+				// Draw a vertical line in world coordinates
+				rect(x - width/2, ymin - width/2, x + width/2, ymax + width/2);
+			}
+			function yline(xmin, xmax, y, width) {
+				// Draw a horozontal line in world coordinates
+				rect(xmin - width/2, y - width/2, xmax + width/2, y + width/2);
+			}
+			function oval(x, y, w, h) {
+				// Draw an oval in world coordinates
+				var [x1, y1] = xf(x - w/2, y - h/2);
+				var [x2, y2] = xf(x + w/2, y + h/2);
+				ctx.beginPath();
+				ctx.ellipse((x1 + x2)/2, (y1+y2)/2, Math.abs(x2 - x1), Math.abs(y2 - y1), 0, 0, Math.PI * 2);
+				ctx.fill();
+			}
+			class Person {
+				constructor(x, y, minx, miny, maxx, maxy) {
+					this.pos = {x: x, y: y};
+					this.bounds = {minx: minx, miny: miny, maxx: maxx, maxy: maxy};
+					this.move = {up: 0, down: 0, left: 0, right: 0};
+					this.speed = 10;
+				}
+				animate(dt) {
+					// Animate the person
+					var dx = 0, dy = 0;
+					if (this.move.down)  dy -= 1;
+					if (this.move.up)    dy += 1;
+					if (this.move.left)  dx -= 1;
+					if (this.move.right) dx += 1;
+					if (dx != 0 && dy != 0) {
+						dx *= 0.707;
+						dy *= 0.707;
+					}
+					this.pos.x += dx * this.speed * dt;
+					this.pos.y += dy * this.speed * dt;
+					if (this.pos.x < this.bounds.minx) this.pos.x = this.bounds.minx;
+					if (this.pos.x > this.bounds.maxx) this.pos.x = this.bounds.maxx;
+					if (this.pos.y < this.bounds.miny) this.pos.y = this.bounds.miny;
+					if (this.pos.y > this.bounds.maxy) this.pos.y = this.bounds.maxy;
+				}
+				draw() {
+					// Draw the person
+					ctx.fillStyle = "hsl(60, 70%, 80%)";
+					oval(this.pos.x, this.pos.y, 1, 0.5);
+				}
+				up(v) {
+					this.move.up = v;
+				}
+				down(v) {
+					this.move.down = v;
+				}
+				left(v) {
+					this.move.left = v;
+				}
+				right(v) {
+					this.move.right = v;
+				}
+			}
+			class Shuttlecock {
+				constructor(x, y) {
+					this.pos = [x, y];
+					this.vel = [0, 0];
+					this.h = 1;
+					this.vh = 0;
+				}
+				draw() {
+					// Draw the shuttlecock
+					ctx.fillStyle = "white";
+					rect(this.x - 0.1, this.y - 0.1, this.x + 0.1, this.y + 0.1);
+				}
+			}
+
+			var player = new Person(2.5, -7.5, -12, -24, 12, -0.5);
+			var opponent = new Person(-2.5, 7.5, -12, 0.5, 12, 24);
+			var objects = [player, opponent];
+			var animating = false;
+			var time;
+
+			function draw() {
+				// Draw the scene
+				// Reference: https://www.dimensions.com/element/badminton-court
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				// Background
+				ctx.fillStyle = "hsl(140, 70%, 30%)";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				// Clearance around the court
+				ctx.fillStyle = "hsl(140, 50%, 25%)";
+				rect(-12, -24, 12, 24);
+				// Court
+				ctx.fillStyle = "hsl(240, 80%, 50%)";
+				rect(-10, -22, 10, 22);
+				ctx.fillStyle = "white";
+				var thick = 0.25;
+				var thin = 0.15
+				xline(-10, -22, 22, thick);
+				xline(10, -22, 22, thick);
+				yline(-10, 10, -22, thick);
+				yline(-10, 10, 22, thick);
+
+				xline(-8.5, -22, 22, thin);
+				xline(8.5, -22, 22, thin);
+				yline(-10, 10, -19.5, thin);
+				yline(-10, 10, -6.5, thin);
+				yline(-10, 10, 6.5, thin);
+				yline(-10, 10, 19.5, thin);
+				xline(0, -22, -6.5, thin);
+				xline(0, 22, 6.5, thin);
+				// Net
+				ctx.fillStyle = "hsl(0, 80%, 50%)";
+				yline(-10, 10, 0, thick);
+				// Draw the objects
+				for (var obj of objects) {
+					obj.draw();
+				}
+			}
+			function resize() {
+				// Resize the canvas to fill the window
+				canvas.width  = window.innerWidth;
+				canvas.height = window.innerHeight;
+				if (!animating) {
+					// Draw the scene once if not animating
+					// (if animating it will be drawn in the animate function)
+					draw();
+				}
+			}
+			function animate(newtime) {
+				if (time) {
+					// Calculate the time step
+					var dt = (newtime - time) / 1000;
+					//console.log('animate', dt);
+					// Simulate the objects
+					for (var obj of objects) {
+						obj.animate(dt);
+					}
+				}
+				time = newtime;
+				draw();
+				if (animating) {
+					// Request the next animation frame
+					requestAnimationFrame(animate);
+				}
+			}
+			function keydown(event) {
+				// Handle keydown events
+				console.debug(event.type, event.key, event.code);
+				switch (event.code) {
+					case "KeyW":
+						player.up(1);
+						break;
+					case "KeyS":
+						player.down(1);
+						break;
+					case "KeyA":
+						player.left(1);
+						break;
+					case "KeyD":
+						player.right(1);
+						break;
+					case "Escape":
+					    document.exitPointerLock();
+						break;
+				}
+			}
+			function keyup(event) {
+				// Handle keyup events
+				console.debug(event.type, event.key, event.code);
+				switch (event.code) {
+					case "KeyW":
+						player.up(0);
+						break;
+					case "KeyS":
+						player.down(0);
+						break;
+					case "KeyA":
+						player.left(0);
+						break;
+					case "KeyD":
+						player.right(0);
+						break;
+				}
+			}
+			// Redraw the scene the correct size whenever the window is resized:
+			window.addEventListener('resize', resize);
+			window.addEventListener('keydown', keydown);
+			window.addEventListener('keyup', keyup);
+			canvas.addEventListener('click', function() {
+				// Request pointer lock on click
+				canvas.requestPointerLock();
+			});
+			window.addEventListener('mousemove', function(event) {
+				// Handle mouse move events
+				if (document.pointerLockElement === canvas) {
+					// If the pointer is locked, move the camera
+					//camera.x -= event.movementX / 100;
+					//camera.y += event.movementY / 100;
+					console.debug(event.type, event.movementX, event.movementY);
+				}
+			});
+			resize();
+			animating = true;
+			animate();
+		</script>
+	</body>
+</html>
