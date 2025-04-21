@@ -91,6 +91,7 @@
 					this.bounds = {minx: minx, miny: miny, maxx: maxx, maxy: maxy};
 					this.move = {up: 0, down: 0, left: 0, right: 0};
 					this.speed = 10;
+					this.angle = 0;
 					this.racketangle = 0;
 				}
 				animate(dt) {
@@ -112,6 +113,13 @@
 					if (this.pos.y > this.bounds.maxy) this.pos.y = this.bounds.maxy;
 				}
 				draw() {
+					// Save the current context so we can put it back at the end
+					ctx.save();
+					// Rotate around the center of the person
+					var [tx, ty] = xf(this.pos.x, this.pos.y);
+					ctx.translate(tx, ty);
+					ctx.rotate(this.angle * Math.PI / 180);
+					ctx.translate(-tx, -ty);
 					// Draw the person
 					ctx.fillStyle = "hsl(60, 70%, 80%)";
 					oval(this.pos.x, this.pos.y, 1, 0.5);
@@ -121,6 +129,12 @@
 					line(this.pos.x, this.pos.y + 0.2, this.pos.x + dx, this.pos.y + dy, 0.2);
 					ctx.fillStyle = "hsla(0, 70%, 20%, 60%)";
 					oval(this.pos.x + dx, this.pos.y + dy, 0.6, 0.3);
+					// Restore the context back to how it was before
+					ctx.restore();
+				}
+				face(pos) {
+					// Face the person towards a point
+					this.angle = 90 + Math.atan2(this.pos.y - pos.y, pos.x - this.pos.x) * 180 / Math.PI;
 				}
 				moveracket(delta) {
 					// Rotate the racket
@@ -169,6 +183,9 @@
 			// The game objects:
 			var player = new Person(2.5, -7.5, -12, -24, 12, -0.5);
 			var opponent = new Person(-2.5, 7.5, -12, 0.5, 12, 24);
+			// Players face eachother:
+			player.face(opponent.pos);
+			opponent.face(player.pos);
 			// Keep them in a list so we can easily iterate over them:
 			var objects = [player, opponent];
 			// The game state (current time, paused, etc.):
@@ -234,6 +251,8 @@
 							obj.animate(dt);
 						}
 					}
+					player.face(opponent.pos);
+					opponent.face(player.pos);
 					// Draw the new scene
 					draw();
 					// Request the next animation frame
