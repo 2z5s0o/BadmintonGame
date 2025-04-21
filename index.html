@@ -81,13 +81,21 @@
 				var [x2, y2] = xf(xmax, ymax);
 				ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
 			}
-			function oval(x, y, w, h) {
+			function oval(x, y, w, h, fill, line=0, stroke="") {
 				// Draw a filled oval in world coordinates
 				var [x1, y1] = xf(x - w/2, y - h/2);
 				var [x2, y2] = xf(x + w/2, y + h/2);
+				ctx.fillStyle = fill;
 				ctx.beginPath();
 				ctx.ellipse((x1 + x2)/2, (y1+y2)/2, Math.abs(x2 - x1), Math.abs(y2 - y1), 0, 0, Math.PI * 2);
 				ctx.fill();
+				if (line) {
+					ctx.lineWidth = scale(line);
+					ctx.strokeStyle = stroke;
+					ctx.beginPath();
+					ctx.ellipse((x1 + x2)/2, (y1+y2)/2, Math.abs(x2 - x1), Math.abs(y2 - y1), 0, 0, Math.PI * 2);
+					ctx.stroke();
+				}
 			}
 			class Person {
 				constructor(x, y, minx, miny, maxx, maxy) {
@@ -129,14 +137,12 @@
 					ctx.rotate(this.angle);
 					ctx.translate(-tx, -ty);
 					// Draw the person
-					ctx.fillStyle = "hsl(60, 70%, 80%)";
-					oval(this.pos.x, this.pos.y, 1, 0.5);
+					oval(this.pos.x, this.pos.y, 1, 0.5, "hsl(350, 80%, 40%)");
 					// Draw the racket
-					ctx.strokeStyle = "hsl(0, 70%, 20%)";
-					var [dx, dy] = [1.5 * Math.cos(this.racketangle), 0.5 + 0.5 * Math.sin(this.racketangle)];
-					line(this.pos.x, this.pos.y + 0.2, this.pos.x + dx, this.pos.y + dy, 0.2);
-					ctx.fillStyle = "hsla(0, 70%, 20%, 60%)";
-					oval(this.pos.x + dx, this.pos.y + dy, 0.6, 0.3);
+					ctx.strokeStyle = "hsl(110, 90%, 80%)";
+					var [dx, dy] = [1.8 * Math.cos(this.racketangle), 0.5 + 0.5 * Math.sin(this.racketangle)];
+					line(this.pos.x, this.pos.y + 0.25, this.pos.x + dx, this.pos.y + dy, 0.2);
+					oval(this.pos.x + dx, this.pos.y + dy, 0.6, 0.3, "hsla(0, 100%, 100%, 60%)", 0.2, "hsla(110, 90%, 80%)");
 					// Restore the context back to how it was before
 					ctx.restore();
 				}
@@ -147,8 +153,8 @@
 				moveracket(delta) {
 					// Rotate the racket
 					this.racketangle += delta;
-					if (this.racketangle > 360) this.racketangle -= 360;
-					if (this.racketangle < 0) this.racketangle += 360;
+					if (this.racketangle > 2 * Math.PI) this.racketangle -= 2 * Math.PI;
+					if (this.racketangle < 0) this.racketangle += 2 * Math.PI;
 				}
 				up(v) {
 					// Start or stop moving up
@@ -205,13 +211,13 @@
 				// Reference: https://www.dimensions.com/element/badminton-court
 				ctx.clearRect(0, 0, canvas.width, canvas.height);
 				// Background
-				ctx.fillStyle = "hsl(140, 70%, 30%)";
+				ctx.fillStyle = "hsl(350, 50%, 25%)";
 				ctx.fillRect(0, 0, canvas.width, canvas.height);
 				// Clearance around the court
-				ctx.fillStyle = "hsl(140, 50%, 25%)";
+				ctx.fillStyle = "hsl(50, 50%, 70%)";
 				rect(-12, -24, 12, 24);
 				// Court
-				ctx.fillStyle = "hsl(240, 80%, 50%)";
+				ctx.fillStyle = "hsl(180, 80%, 20%)";
 				rect(-10, -22, 10, 22);
 				ctx.strokeStyle = "white";
 				var thick = 0.25;
@@ -230,8 +236,8 @@
 				line(0, -22, 0, -6.5, thin);
 				line(0, 22, 0, 6.5, thin);
 				// Net
-				ctx.strokeStyle = "hsl(0, 80%, 50%)";
-				line(-10, 0, 10, 0, thick);
+				ctx.strokeStyle = "hsl(350, 80%, 40%)";
+				line(-11, 0, 11, 0, thick);
 				// Draw all the objects
 				for (var obj of objects) {
 					obj.draw();
