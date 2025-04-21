@@ -34,8 +34,8 @@
 		</style>
 	</head>
 	<body>
-		<canvas id="canvas"></canvas>
-		<div id="pause" class="popup">
+		<canvas id="canvas"></canvas><!-- This is where the game will be drawn -->
+		<div id="pause" class="popup"><!-- This is the pause popup -->
 			<h2>Paused</h2>
 			<p>Click here to resume</p>
 		</div>
@@ -101,16 +101,20 @@
 				animate(dt) {
 					// Animate the person
 					var dx = 0, dy = 0;
+					// Check if the person is moving:
 					if (this.move.down)  dy -= 1;
 					if (this.move.up)    dy += 1;
 					if (this.move.left)  dx -= 1;
 					if (this.move.right) dx += 1;
+					// Normalize the movement vector to have a length of 1:
 					if (dx != 0 && dy != 0) {
 						dx *= 0.707;
 						dy *= 0.707;
 					}
+					// Move the person:
 					this.pos.x += dx * this.speed * dt;
 					this.pos.y += dy * this.speed * dt;
+					// Make sure the person stays within the bounds:
 					if (this.pos.x < this.bounds.minx) this.pos.x = this.bounds.minx;
 					if (this.pos.x > this.bounds.maxx) this.pos.x = this.bounds.maxx;
 					if (this.pos.y < this.bounds.miny) this.pos.y = this.bounds.miny;
@@ -233,16 +237,6 @@
 					obj.draw();
 				}
 			}
-			function resize() {
-				// Resize the canvas to fill the window
-				canvas.width  = window.innerWidth;
-				canvas.height = window.innerHeight;
-				if (paused) {
-					// Draw the scene once if we are paused
-					// (if not, it will be drawn in the animate function)
-					draw();
-				}
-			}
 			function animate(newtime) {
 				// Animate the scene by advancing time
 				var dt = (newtime - time) / 1000; // Time passed since last frame in seconds
@@ -266,17 +260,34 @@
 			function pause() {
 				// Pause the game
 				paused = true;
+				// Stop keeping track of elapsed time:
 				time = undefined;
+				// Make sure the player stops moving:
 				player.stop();
-				document.exitPointerLock(); // release control of the mouse
+				// release control of the mouse:
+				document.exitPointerLock();
+				// Unhide the pause popup:
 				document.getElementById('pause').classList.remove('hide');
 			}
 			function resume() {
 				// Resume the game
-				canvas.requestPointerLock(); // Take control of the mouse
+				// Take control of the mouse:
+				canvas.requestPointerLock();
+				// Hide the pause popup:
 				document.getElementById('pause').classList.add('hide');
+				// Start animating:
 				paused = false;
-				animate(); // start animating
+				animate();
+			}
+			function resize() {
+				// Resize the canvas to fill the window
+				canvas.width  = window.innerWidth;
+				canvas.height = window.innerHeight;
+				if (paused) {
+					// Draw the scene once if we are paused
+					// (if not, it will be drawn in the animate function)
+					draw();
+				}
 			}
 			function keydown(event) {
 				// Handle keydown events
@@ -366,18 +377,16 @@
 			window.addEventListener("blur", pause);
 			document.addEventListener('pointerlockchange', function(event) {
 				console.debug(event.type, event);
-				// Make sure to pause if the user presses escape
+				// If the user pressed escape to release the mouse, we need to pause the game:
 				if (!paused && !document.pointerLockElement) {
 					pause();
 				}
 			});
 			// Resume if the user clicks on the pause popup:
-			// (the true parameter is so we also get to handle clicks on the text)
+			// (the true parameter is so that we also process clicks on the text)
 			document.getElementById("pause").addEventListener('click', resume, true);
-			// Set the initial size of the canvas:
+			// Set the initial size of the canvas and draw the scene:
 			resize();
-			// Draw the couurt:
-			draw();
 		</script>
 	</body>
 </html>
