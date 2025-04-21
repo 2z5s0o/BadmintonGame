@@ -91,7 +91,7 @@
 					this.bounds = {minx: minx, miny: miny, maxx: maxx, maxy: maxy};
 					this.move = {up: 0, down: 0, left: 0, right: 0};
 					this.speed = 10;
-					this.angle = 0;
+					this.racketangle = 0;
 				}
 				animate(dt) {
 					// Animate the person
@@ -117,16 +117,16 @@
 					oval(this.pos.x, this.pos.y, 1, 0.5);
 					// Draw the racket
 					ctx.strokeStyle = "hsl(0, 70%, 20%)";
-					var [dx, dy] = [1.5 * Math.cos(this.angle * Math.PI / 180), 0.5 + 0.5 * Math.sin(this.angle * Math.PI / 180)];
+					var [dx, dy] = [1.5 * Math.cos(this.racketangle * Math.PI / 180), 0.5 + 0.5 * Math.sin(this.racketangle * Math.PI / 180)];
 					line(this.pos.x, this.pos.y + 0.2, this.pos.x + dx, this.pos.y + dy, 0.2);
 					ctx.fillStyle = "hsla(0, 70%, 20%, 60%)";
 					oval(this.pos.x + dx, this.pos.y + dy, 0.6, 0.3);
 				}
-				rotate(delta) {
+				moveracket(delta) {
 					// Rotate the racket
-					this.angle += delta / 5;
-					if (this.angle > 360) this.angle -= 360;
-					if (this.angle < 0) this.angle += 360;
+					this.racketangle += delta / 5;
+					if (this.racketangle > 360) this.racketangle -= 360;
+					if (this.racketangle < 0) this.racketangle += 360;
 				}
 				up(v) {
 					// Start or stop moving up
@@ -329,7 +329,7 @@
 			window.addEventListener('mousemove', function(event) {
 				// Handle mouse movement events
 				if (!paused) {
-					player.rotate(event.movementX);
+					player.moveracket(event.movementX);
 				}
 			});
 			window.addEventListener('mousedown', function(event) {
