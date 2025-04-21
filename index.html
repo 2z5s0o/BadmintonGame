@@ -49,6 +49,10 @@
 			var ctx = canvas.getContext("2d");
 			// The camera object, used to transform world coordinates to screen coordinates:
 			var camera = { x: 0, y: 0, zoom: 1 };
+			function degrees(deg) {
+				// Convert degrees to radians
+				return deg * Math.PI / 180;
+			}
 			function scale(v) {
 				// Scale a length from world to screen coordinates
 				var ymin = -25;
@@ -118,14 +122,14 @@
 					// Rotate around the center of the person
 					var [tx, ty] = xf(this.pos.x, this.pos.y);
 					ctx.translate(tx, ty);
-					ctx.rotate(this.angle * Math.PI / 180);
+					ctx.rotate(this.angle);
 					ctx.translate(-tx, -ty);
 					// Draw the person
 					ctx.fillStyle = "hsl(60, 70%, 80%)";
 					oval(this.pos.x, this.pos.y, 1, 0.5);
 					// Draw the racket
 					ctx.strokeStyle = "hsl(0, 70%, 20%)";
-					var [dx, dy] = [1.5 * Math.cos(this.racketangle * Math.PI / 180), 0.5 + 0.5 * Math.sin(this.racketangle * Math.PI / 180)];
+					var [dx, dy] = [1.5 * Math.cos(this.racketangle), 0.5 + 0.5 * Math.sin(this.racketangle)];
 					line(this.pos.x, this.pos.y + 0.2, this.pos.x + dx, this.pos.y + dy, 0.2);
 					ctx.fillStyle = "hsla(0, 70%, 20%, 60%)";
 					oval(this.pos.x + dx, this.pos.y + dy, 0.6, 0.3);
@@ -134,11 +138,11 @@
 				}
 				face(pos) {
 					// Face the person towards a point
-					this.angle = 90 + Math.atan2(this.pos.y - pos.y, pos.x - this.pos.x) * 180 / Math.PI;
+					this.angle = degrees(90) + Math.atan2(this.pos.y - pos.y, pos.x - this.pos.x);
 				}
 				moveracket(delta) {
 					// Rotate the racket
-					this.racketangle += delta / 5;
+					this.racketangle += delta;
 					if (this.racketangle > 360) this.racketangle -= 360;
 					if (this.racketangle < 0) this.racketangle += 360;
 				}
@@ -339,7 +343,8 @@
 			window.addEventListener('mousemove', function(event) {
 				// Handle mouse movement events
 				if (!paused) {
-					player.moveracket(event.movementX);
+					// movementX is in pixels, don't want the racket to rotate toop fast, so scale it down:
+					player.moveracket(event.movementX / 500);
 				}
 			});
 			window.addEventListener('mousedown', function(event) {
