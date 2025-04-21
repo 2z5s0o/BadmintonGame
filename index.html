@@ -200,7 +200,7 @@
 								                y: power * Math.cos(angle),
 											    z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
 							this.shuttle.pos.z = 4;
-							this.shuttle.state = "flying";
+							this.shuttle.hit();
 							this.state = "free";
 
 							var shuttle = new Shuttlecock(0, 0);
@@ -350,9 +350,10 @@
 					this.vel = {x: 0, y: 0, z: 0};
 					this.state = "held";
 					this.angle = undefined;
+					this.trajectory = [];
 				}
 				animate(dt) {
-					if (this.state != "held" && this.pos.z > 0) {
+					if (this.state == "flying") {
 						// Animate the shuttlecock
 						var oldy = this.pos.y;
 						this.pos.x += this.vel.x * dt;
@@ -381,7 +382,9 @@
 							this.vel = {x: 0, y: 0, z: 0};
 							// Land in a random direction:
 							this.angle = Math.random() * Math.PI * 2;
+							this.state = "landed";
 						}
+						this.trajectory.push({...this.pos});
 					}
 				}
 				draw() {
@@ -405,6 +408,9 @@
 							oval(this.pos.x, this.pos.y, 0.5, 0.5, "white");
 						}
 					}
+				}
+				hit() {
+					this.state = "flying";
 				}
 			}
 
@@ -472,10 +478,21 @@
 					ctx.lineTo(...xf(0, 5));
 					ctx.stroke();
 					for (var obj of objects) {
-						if (!obj instanceof Shuttlecock) continue;
+						if (!(obj instanceof Shuttlecock)) continue;
+						if (obj.state == "flying") {
+							ctx.fillStyle = "red";
+						} else {
+							ctx.fillStyle = "hsla(0, 0%, 0%, 0.2)";
+						}
+						for (var pos of obj.trajectory) {
+							if (Math.abs(pos.y) > 24) continue;
+							var [x, y] = xf(pos.y, pos.z);
+							ctx.beginPath();
+							ctx.ellipse(x - 1, y - 1, 2, 2, 0, 0, Math.PI * 2);
+							ctx.fill();
+						}
 						if (Math.abs(obj.pos.y) > 24) continue;
 						var [x, y] = xf(obj.pos.y, obj.pos.z);
-						ctx.fillStyle = "black";
 						ctx.beginPath();
 						ctx.ellipse(x - 2, y - 2, 4, 4, 0, 0, Math.PI * 2);
 						ctx.fill();
