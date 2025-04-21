@@ -45,12 +45,16 @@
 			var ctx = canvas.getContext("2d");
 			// The camera object, used to transform world coordinates to screen coordinates:
 			var camera = { x: 0, y: 0, zoom: 1 };
+			function scale(v) {
+				// Scale a length from world to screen coordinates
+				var ymin = -25;
+				var ymax = 25;
+				return v * canvas.height / (ymax - ymin);
+			}
 			function xf(x, y) {
 				// Transform (x, y) to screen coordinates
 				var ymin = -25;
-				var ymax = 25;
-				var scale = canvas.height / (ymax - ymin);
-				return [x * scale + canvas.width/2, (-y - ymin) * scale];
+				return [scale(x) + canvas.width/2, scale(-y - ymin)];
 			}
 			function rect(xmin, ymin, xmax, ymax) {
 				// Draw a rectangle in world coordinates
@@ -58,19 +62,12 @@
 				var [x2, y2] = xf(xmax, ymax);
 				ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
 			}
-			function xline(x, ymin, ymax, width) {
-				// Draw a vertical line in world coordinates
-				rect(x - width/2, ymin - width/2, x + width/2, ymax + width/2);
-			}
-			function yline(xmin, xmax, y, width) {
-				// Draw a horozontal line in world coordinates
-				rect(xmin - width/2, y - width/2, xmax + width/2, y + width/2);
-			}
 			function line(x1, y1, x2, y2, width) {
 				// Draw a line in world coordinates
 				var [x1s, y1s] = xf(x1, y1);
 				var [x2s, y2s] = xf(x2, y2);
-				ctx.lineWidth = width;
+				ctx.lineWidth = scale(width);
+				ctx.lineCap = "round";
 				ctx.beginPath();
 				ctx.moveTo(x1s, y1s);
 				ctx.lineTo(x2s, y2s);
@@ -115,10 +112,10 @@
 					ctx.fillStyle = "hsl(60, 70%, 80%)";
 					oval(this.pos.x, this.pos.y, 1, 0.5);
 					// Draw the racket
-					ctx.fillStyle = "hsl(0, 70%, 20%)";
 					ctx.strokeStyle = "hsl(0, 70%, 20%)";
 					var [dx, dy] = [1.5 * Math.cos(this.angle * Math.PI / 180), 0.5 + 0.5 * Math.sin(this.angle * Math.PI / 180)];
-					line(this.pos.x, this.pos.y + 0.2, this.pos.x + dx, this.pos.y + dy, 3);
+					line(this.pos.x, this.pos.y + 0.2, this.pos.x + dx, this.pos.y + dy, 0.2);
+					ctx.fillStyle = "hsla(0, 70%, 20%, 60%)";
 					oval(this.pos.x + dx, this.pos.y + dy, 0.6, 0.3);
 				}
 				rotate(delta) {
@@ -181,25 +178,25 @@
 				// Court
 				ctx.fillStyle = "hsl(240, 80%, 50%)";
 				rect(-10, -22, 10, 22);
-				ctx.fillStyle = "white";
+				ctx.strokeStyle = "white";
 				var thick = 0.25;
 				var thin = 0.15
-				xline(-10, -22, 22, thick);
-				xline(10, -22, 22, thick);
-				yline(-10, 10, -22, thick);
-				yline(-10, 10, 22, thick);
+				line(-10, -22, -10, 22, thick);
+				line(10, -22, 10, 22, thick);
+				line(-10, -22, 10, -22, thick);
+				line(-10, 22, 10, 22, thick);
 
-				xline(-8.5, -22, 22, thin);
-				xline(8.5, -22, 22, thin);
-				yline(-10, 10, -19.5, thin);
-				yline(-10, 10, -6.5, thin);
-				yline(-10, 10, 6.5, thin);
-				yline(-10, 10, 19.5, thin);
-				xline(0, -22, -6.5, thin);
-				xline(0, 22, 6.5, thin);
+				line(-8.5, -22, -8.5, 22, thin);
+				line(8.5, -22, 8.5, 22, thin);
+				line(-10, -19.5, 10, -19.5, thin);
+				line(-10, -6.5, 10, -6.5, thin);
+				line(-10, 6.5, 10, 6.5, thin);
+				line(-10, 19.5, 10, 19.5, thin);
+				line(0, -22, 0, -6.5, thin);
+				line(0, 22, 0, 6.5, thin);
 				// Net
-				ctx.fillStyle = "hsl(0, 80%, 50%)";
-				yline(-10, 10, 0, thick);
+				ctx.strokeStyle = "hsl(0, 80%, 50%)";
+				line(-10, 0, 10, 0, thick);
 				// Draw all the objects
 				for (var obj of objects) {
 					obj.draw();
