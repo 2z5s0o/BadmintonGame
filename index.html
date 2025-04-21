@@ -9,6 +9,7 @@
 			body {
 				font-family: verdana, sans-serif;
 				font-size: 18px;
+				margin: 0;
 				/* Prevent the window scrolling */
 				width: 100%;
 				height: 100%;
@@ -109,6 +110,24 @@
 				}
 				ctx.restore();
 			}
+			function poly(points, fill, line=0, stroke="") {
+				// Draw a filled polygon in world coordinates
+				var [x1, y1] = xf(points[0], points[1]);
+				ctx.fillStyle = fill;
+				ctx.beginPath();
+				ctx.moveTo(x1, y1);
+				for (var i = 2; i < points.length; i += 2) {
+					var [x2, y2] = xf(points[i], points[i+1]);
+					ctx.lineTo(x2, y2);
+				}
+				ctx.closePath();
+				ctx.fill();
+				if (line) {
+					ctx.lineWidth = scale(line);
+					ctx.strokeStyle = stroke;
+					ctx.stroke();
+				}
+			}
 			class Person {
 				constructor(x, y, minx, miny, maxx, maxy) {
 					this.pos = {x: x, y: y};
@@ -142,16 +161,52 @@
 					if (this.pos.x > this.bounds.maxx) this.pos.x = this.bounds.maxx;
 					if (this.pos.y < this.bounds.miny) this.pos.y = this.bounds.miny;
 					if (this.pos.y > this.bounds.maxy) this.pos.y = this.bounds.maxy;
+					if (this.shuttle) {
+						// Move the shuttlecock with the person:
+						this.shuttle.pos.x = this.pos.x;
+						this.shuttle.pos.y = this.pos.y;
+					}
 					if (this.state == "charging") {
 						// Increase the power while charging:
-						this.power += 100 * dt;
+						if (this.swingtype() == "underhand") {
+							this.power += 200 * dt;
+						} else {
+							this.power += 100 * dt;
+						}
 						if (this.power > 100) {
 							this.power = 100;
 						}
 					} else {
 						// Decrease the power while swinging:
-						this.power -= 200 * dt;
-						if (this.power < 0) {
+						if (this.swingtype() == "underhand") {
+							this.power -= 400 * dt;
+						} else {
+							this.power -= 200 * dt;
+						}
+						if (this.state == "swinging" && this.shuttle && this.power < 0.5 * this.hitpower) {
+							// Hit the shuttlecock halfway through the swing
+							this.shuttle.pos = {x: this.pos.x + 2.5 * Math.sin(this.racketangle),
+								                y: this.pos.y + 2.5 * Math.cos(this.racketangle)};
+							var angle = this.racketangle;
+							var power = 30 * this.hitpower / 100;
+							if (this.swingtype() == "forehand") {
+								power = 70 * this.hitpower / 100;
+								angle -= degrees(90);
+							} else if (this.swingtype() == "backhand") {
+								power = 70 * this.hitpower / 100;
+								angle += degrees(90);
+							}
+							this.shuttle.vel = {x: power * Math.sin(angle),
+								                y: power * Math.cos(angle),
+											    z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
+							this.shuttle.pos.z = 4;
+							this.shuttle.state = "flying";
+							this.state = "free";
+
+							var shuttle = new Shuttlecock(0, 0);
+							objects.push(shuttle);
+							this.hold(shuttle);
+						} else if (this.power < 0) {
 							// When it gets to zero, reset the state
 							this.power = 0;
 							this.state = "free";
@@ -203,8 +258,6 @@
 					dx *= scale;
 					dy *= scale;
 					line(this.pos.x, this.pos.y, this.pos.x + dx * 0.8, this.pos.y + dy * 0.8, 0.2);
-					if (this.swingtype() == "underhand") {
-					}
 					oval(this.pos.x + dx, this.pos.y + dy, w, h, "hsla(0, 100%, 100%, 60%)", 0.2, "hsl(110, 90%, 80%)", angle);
 					// Draw the person
 					oval(this.pos.x, this.pos.y, 1, 1, "hsl(350, 80%, 40%)");
@@ -293,29 +346,64 @@
 			}
 			class Shuttlecock {
 				constructor(x, y) {
-					this.pos = {x: x, y: y};
-					this.vel = {x: 0, y: 0};
-					this.h = 1;
-					this.vh = 0;
+					this.pos = {x: x, y: y, z: 0};
+					this.vel = {x: 0, y: 0, z: 0};
 					this.state = "held";
+					this.angle = undefined;
 				}
 				animate(dt) {
-					if (this.state != "held") {
+					if (this.state != "held" && this.pos.z > 0) {
 						// Animate the shuttlecock
+						var oldy = this.pos.y;
 						this.pos.x += this.vel.x * dt;
 						this.pos.y += this.vel.y * dt;
-						this.h += this.vh * dt;
-						this.vh -= 9.8 * dt;
-						if (this.h < 0) {
-							this.h = 0;
-							this.vh = 0;
+						this.pos.z += this.vel.z * dt;
+						this.vel.z -= 9.8*3.3 * dt;
+						this.vel.z -= 0.8 * this.vel.z * dt;
+						this.vel.x -= 0.8 * this.vel.x * dt;
+						this.vel.y -= 0.8 * this.vel.y * dt;
+						if (Math.sign(oldy) != Math.sign(this.pos.y)) {
+							// The shuttlecock crossed the net
+							if (this.pos.z < 5) {
+								this.pos.y = oldy;
+								var frac = Math.random() * 0.4
+								frac *= frac;
+								this.vel.y *= -frac;
+								this.vel.x *= frac;
+								this.vel.z = -Math.random() * 1;
+							}
+						}
+						if (this.vel.x > 0 || this.vel.y > 0) {
+							this.angle = Math.atan2(this.vel.x, this.vel.y);
+						}
+						if (this.pos.z < 0) {
+							this.pos.z = 0;
+							this.vel = {x: 0, y: 0, z: 0};
+							// Land in a random direction:
+							this.angle = Math.random() * Math.PI * 2;
 						}
 					}
 				}
 				draw() {
 					// Draw the shuttlecock
 					if (this.state != "held") {
-						rect(this.pos.x - 0.5, this.pos.y - 0.5, this.pos.x + 0.5, this.pos.y + 0.5, "white");
+						var speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.y * this.vel.y);
+						if (this.pos.z <= 0 || speed > Math.abs(this.vel.z)) {
+							// It's flying mostly horizontally, or fallen on the ground,
+							// draw it as a triangle
+							var a1 = this.angle + degrees(180) + degrees(20);
+							var a2 = this.angle + degrees(180) - degrees(20);
+							var size = 1.2;
+							var x1 = this.pos.x + size * Math.sin(a1);
+							var y1 = this.pos.y + size * Math.cos(a1);
+							var x2 = this.pos.x + size * Math.sin(a2);
+							var y2 = this.pos.y + size * Math.cos(a2);
+							poly([x1, y1, this.pos.x, this.pos.y, x2, y2], "white");
+							oval(this.pos.x, this.pos.y, 0.3, 0.3, "black");
+						} else {
+							// It's falling downwards, draw it as a circle
+							oval(this.pos.x, this.pos.y, 0.5, 0.5, "white");
+						}
 					}
 				}
 			}
@@ -361,9 +449,37 @@
 				// Net
 				ctx.strokeStyle = "hsl(350, 80%, 40%)";
 				line(-11, 0, 11, 0, thick);
+
 				// Draw all the objects
 				for (var obj of objects) {
 					obj.draw();
+				}
+
+				// Draw the side view
+				if (canvas.width > 1200) {
+					var sidewidth = 400;
+					var sideheight = 300;
+					function xf(y, z) {
+						var scale = sidewidth / 48;
+						return [20 + scale * (y + 24), canvas.height - 20 - scale * z];
+					}
+					ctx.fillStyle = "white";
+					ctx.fillRect(20, canvas.height - sideheight - 20, sidewidth, sideheight);
+					ctx.strokeStyle = "red"
+					ctx.lineWidth = 5;
+					ctx.beginPath();
+					ctx.moveTo(...xf(0, 0));
+					ctx.lineTo(...xf(0, 5));
+					ctx.stroke();
+					for (var obj of objects) {
+						if (!obj instanceof Shuttlecock) continue;
+						if (Math.abs(obj.pos.y) > 24) continue;
+						var [x, y] = xf(obj.pos.y, obj.pos.z);
+						ctx.fillStyle = "black";
+						ctx.beginPath();
+						ctx.ellipse(x - 2, y - 2, 4, 4, 0, 0, Math.PI * 2);
+						ctx.fill();
+					}
 				}
 			}
 			function animate(newtime) {
