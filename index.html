@@ -69,6 +69,27 @@
 			<p>Click here to resume</p>
 		</div>
 		<script>
+			// Define the colours we will use:
+			var colours = {
+				background: "hsl(350, 50%, 25%)",
+				clearance: "hsl(40, 70%, 70%)",
+				court: "hsl(180, 80%, 20%)",
+				courtline: "white",
+				net: "hsl(350, 80%, 40%)",
+				racket: "hsl(110, 90%, 80%)",
+				rackethead: "hsla(0, 100%, 100%, 60%)",
+				player: "hsl(350, 80%, 40%)",
+				shuttle: "white",
+				shuttletip: "black",
+				shuttle1: "#ddd",
+				shuttle2: "#bbb",
+				shuttle3: "#999",
+				powerbarbackground: "white",
+				powerbarcharge: "hsl(350, 80%, 50%)",
+				powerbarswing: "hsl(130, 90%, 40%)",
+				sideview: "white",
+				trajectory: "hsla(0, 0%, 0%, 0.2)",
+			}
 			// Load the sound files:
 			var sound_swish = new Audio("swish.mp3");
 			var sound_hit = new Audio("hit.mp3");
@@ -251,7 +272,7 @@
 				}
 				draw() {
 					// Draw the racket
-					ctx.strokeStyle = "hsl(110, 90%, 80%)";
+					ctx.strokeStyle = colours.racket;
 					var angle = this.racketangle
 					var w = 0.2;
 					var h = 0.6;
@@ -287,15 +308,15 @@
 					dx *= scale;
 					dy *= scale;
 					line(this.pos.x, this.pos.y, this.pos.x + dx * 0.8, this.pos.y + dy * 0.8, 0.2);
-					oval(this.pos.x + dx, this.pos.y + dy, w, h, "hsla(0, 100%, 100%, 60%)", 0.2, "hsl(110, 90%, 80%)", angle);
+					oval(this.pos.x + dx, this.pos.y + dy, w, h, colours.rackethead, 0.2, colours.racket, angle);
 					// Draw the person
-					oval(this.pos.x, this.pos.y, 1, 1, "hsl(350, 80%, 40%)");
+					oval(this.pos.x, this.pos.y, 1, 1, colours.player);
 					// Draw the power bar
 					if (this.power > 0) {
-						rect(this.pos.x - 1, this.pos.y - 1.8, this.pos.x + 1, this.pos.y - 1.4, "white");
-						var col = "hsl(130, 90%, 40%)";
+						rect(this.pos.x - 1, this.pos.y - 1.8, this.pos.x + 1, this.pos.y - 1.4, colours.powervbarbackground);
+						var col = colours.powerbarswing;
 						if (this.state == "charging") {
-							col = "hsl(350, 80%, 50%)";
+							col = colours.powerbarcharge;
 						}
 						rect(this.pos.x - 1, this.pos.y - 1.8, this.pos.x - 1 + this.power / 50, this.pos.y - 1.4, col);
 					}
@@ -303,13 +324,13 @@
 						// Draw the shuttlecock
 						var [dx, dy] = [2.5 * Math.sin(this.racketangle), 2.5 * Math.cos(this.racketangle)];
 						if (this.state == "free") {
-							oval(this.pos.x, this.pos.y, 0.4, 0.4, "white");
-							oval(this.pos.x, this.pos.y, 0.2, 0.2, "black");
+							oval(this.pos.x, this.pos.y, 0.4, 0.4, colours.shuttle);
+							oval(this.pos.x, this.pos.y, 0.2, 0.2, colours.shuttletip);
 						} else if (this.state == "charging") {
-							oval(this.pos.x + dx, this.pos.y + dy, 0.4, 0.4, "white");
-							oval(this.pos.x + dx, this.pos.y + dy, 0.3, 0.3, "#ddd");
-							oval(this.pos.x + dx, this.pos.y + dy, 0.2, 0.2, "#bbb");
-							oval(this.pos.x + dx, this.pos.y + dy, 0.1, 0.1, "#888");
+							oval(this.pos.x + dx, this.pos.y + dy, 0.4, 0.4, colours.shuttle);
+							oval(this.pos.x + dx, this.pos.y + dy, 0.3, 0.3, colours.shuttle1);
+							oval(this.pos.x + dx, this.pos.y + dy, 0.2, 0.2, colours.shuttle2);
+							oval(this.pos.x + dx, this.pos.y + dy, 0.1, 0.1, colours.shuttle3);
 						}
 					}
 				}
@@ -327,6 +348,9 @@
 					// Hold the shuttlecock
 					this.shuttle = shuttle;
 					shuttle.state= "held";
+					shuttle.pos.x = this.pos.x;
+					shuttle.pos.y = this.pos.y;
+					shuttle.pos.z = 4;
 				}
 				moveracket(deltax, deltay) {
 					// Rotate the racket
@@ -457,11 +481,11 @@
 							var y1 = this.pos.y + size * Math.cos(a1);
 							var x2 = this.pos.x + size * Math.sin(a2);
 							var y2 = this.pos.y + size * Math.cos(a2);
-							poly([x1, y1, this.pos.x, this.pos.y, x2, y2], "white");
-							oval(this.pos.x, this.pos.y, 0.3, 0.3, "black");
+							poly([x1, y1, this.pos.x, this.pos.y, x2, y2], colours.shuttle);
+							oval(this.pos.x, this.pos.y, 0.3, 0.3, colours.shuttletip);
 						} else {
 							// It's falling downwards, draw it as a circle
-							oval(this.pos.x, this.pos.y, 0.5, 0.5, "white");
+							oval(this.pos.x, this.pos.y, 0.5, 0.5, colours.shuttle);
 						}
 					}
 				}
@@ -486,13 +510,13 @@
 				// Reference: https://www.dimensions.com/element/badminton-court
 				ctx.clearRect(0, 0, canvas.width, canvas.height);
 				// Background
-				ctx.fillStyle = "hsl(350, 50%, 25%)";
+				ctx.fillStyle = colours.background;
 				ctx.fillRect(0, 0, canvas.width, canvas.height);
 				// Clearance around the court
-				rect(-12, -24, 12, 24, "hsl(40, 70%, 70%)");
+				rect(-12, -24, 12, 24, colours.clearance);
 				// Court
-				rect(-10, -22, 10, 22, "hsl(180, 80%, 20%)");
-				ctx.strokeStyle = "white";
+				rect(-10, -22, 10, 22, colours.court);
+				ctx.strokeStyle = colours.courtline;
 				var thick = 0.25;
 				var thin = 0.15
 				line(-10, -22, -10, 22, thick);
@@ -509,7 +533,7 @@
 				line(0, -22, 0, -6.5, thin);
 				line(0, 22, 0, 6.5, thin);
 				// Net
-				ctx.strokeStyle = "hsl(350, 80%, 40%)";
+				ctx.strokeStyle = colours.net;
 				line(-11, 0, 11, 0, thick);
 
 				// Draw all the objects
@@ -517,29 +541,58 @@
 					obj.draw();
 				}
 
-				// Draw the side view
+				// Draw the side view if the browser window is wide enough
 				if (canvas.width > 1200) {
 					var sidewidth = 400;
 					var sideheight = 200;
 					function xf(y, z) {
-						var scale = sidewidth / 48;
-						return [20 + scale * (y + 24), canvas.height - 20 - scale * z];
+						// Transform (y, z) to side view coordinates
+						var scale = sidewidth / 50;
+						return [20 + scale * (y + 25), canvas.height - 25 - scale * z];
 					}
-					ctx.fillStyle = "white";
+					// Draw the side view background
+					ctx.fillStyle = colours.sideview;
 					ctx.fillRect(20, canvas.height - sideheight - 20, sidewidth, sideheight);
-					ctx.strokeStyle = "red"
+					// Draw the clearance area
+					ctx.strokeStyle = colours.clearance;
+					ctx.lineWidth = 4;
+					ctx.beginPath();
+					ctx.moveTo(...xf(-24, -0.1));
+					ctx.lineTo(...xf(24, -0.1));
+					ctx.closePath();
+					ctx.stroke();
+					// Draw the court area
+					ctx.strokeStyle = colours.court;
+					ctx.beginPath();
+					ctx.moveTo(...xf(-22, -0.1));
+					ctx.lineTo(...xf(22, -0.1));
+					ctx.closePath();
+					ctx.stroke();
+					ctx.fillStyle = colours.courtline;
+					// Draw the court lines
+					for (var p of [-22, -19.5, -6.5, 6.5, 19.5, 22]) {
+						var [x, y] = xf(p, -0.1);
+						ctx.fillRect(x - 2, y - 2, 4, 4);
+					}
+					// Draw the net
+					ctx.strokeStyle = colours.net;
 					ctx.lineWidth = 5;
 					ctx.beginPath();
 					ctx.moveTo(...xf(0, 0));
 					ctx.lineTo(...xf(0, 5));
+					ctx.closePath();
 					ctx.stroke();
+					// Draw the trajectories of the shuttlecocks
 					for (var obj of objects) {
 						if (!(obj instanceof Shuttlecock)) continue;
 						if (obj.state == "flying") {
-							ctx.fillStyle = "red";
+							// The active (flying) shuttlecock is red
+							ctx.fillStyle = colours.player;
 						} else {
-							ctx.fillStyle = "hsla(0, 0%, 0%, 0.2)";
+							// All the previous ones are grey
+							ctx.fillStyle = colours.trajectory;
 						}
+						// Draw a dot for every point in the trajectory
 						for (var pos of obj.trajectory) {
 							if (Math.abs(pos.y) > 24) continue;
 							var [x, y] = xf(pos.y, pos.z);
@@ -547,8 +600,10 @@
 							ctx.ellipse(x - 1, y - 1, 2, 2, 0, 0, Math.PI * 2);
 							ctx.fill();
 						}
+						// Draw the final position of the shuttlecock bigger
 						if (Math.abs(obj.pos.y) > 24) continue;
 						var [x, y] = xf(obj.pos.y, obj.pos.z);
+						if (obj.state == "held") ctx.fillStyle = colours.player;
 						ctx.beginPath();
 						ctx.ellipse(x - 2, y - 2, 4, 4, 0, 0, Math.PI * 2);
 						ctx.fill();
