@@ -1,39 +1,43 @@
 <!DOCTYPE html>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <html lang="en">
 	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Badminton</title>
 		<link rel="icon" type="image/x-icon" href="shuttlecockicon.png">
 		<style>
 			body {
 				font-family: verdana, sans-serif;
-				font-size: 15px;
+				font-size: 18px;
 				/* Prevent the window scrolling */
 				width: 100%;
 				height: 100%;
 				overflow: hidden;
 			}
-			#pause {
+			.popup {
+				/* Format the pause popup */
 				position: absolute;
 				top: 50%;
 				left: 50%;
 				transform: translate(-50%, -50%);
 				background-color: rgba(0, 0, 0, 0.5);
 				color: white;
-				padding: 20px;
-				border-radius: 10px;
+				padding: 20px 40px;
+				border-radius: 15px;
 				text-align: center;
+				cursor: pointer;
+				line-height: 1.5;
 			}
-			#pause.hide {
+			.popup.hide {
 				display: none;
 			}
 		</style>
 	</head>
 	<body>
 		<canvas id="canvas"></canvas>
-		<div id="pause">
-			<p>Paused</p>
-			<p>Press P to resume</p>
+		<div id="pause" class="popup">
+			<h2>Paused</h2>
+			<p>Press P or click<br>to resume</p>
 		</div>
 		<script>
 			// Load the sound files:
@@ -41,7 +45,7 @@
 			var sound_hit = new Audio("hit.mp3");
 			// The canvas where we will draw the scene:
 			var canvas = document.getElementById('canvas');
-			// The 2D context of the canvas, used for drawing into it:
+			// The 2D context of the canvas, used for drawing on it:
 			var ctx = canvas.getContext("2d");
 			// The camera object, used to transform world coordinates to screen coordinates:
 			var camera = { x: 0, y: 0, zoom: 1 };
@@ -56,12 +60,6 @@
 				var ymin = -25;
 				return [scale(x) + canvas.width/2, scale(-y - ymin)];
 			}
-			function rect(xmin, ymin, xmax, ymax) {
-				// Draw a rectangle in world coordinates
-				var [x1, y1] = xf(xmin, ymin);
-				var [x2, y2] = xf(xmax, ymax);
-				ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-			}
 			function line(x1, y1, x2, y2, width) {
 				// Draw a line in world coordinates
 				var [x1s, y1s] = xf(x1, y1);
@@ -73,8 +71,14 @@
 				ctx.lineTo(x2s, y2s);
 				ctx.stroke();
 			}
+			function rect(xmin, ymin, xmax, ymax) {
+				// Draw a filled rectangle in world coordinates
+				var [x1, y1] = xf(xmin, ymin);
+				var [x2, y2] = xf(xmax, ymax);
+				ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+			}
 			function oval(x, y, w, h) {
-				// Draw an oval in world coordinates
+				// Draw a filled oval in world coordinates
 				var [x1, y1] = xf(x - w/2, y - h/2);
 				var [x2, y2] = xf(x + w/2, y + h/2);
 				ctx.beginPath();
@@ -125,18 +129,23 @@
 					if (this.angle < 0) this.angle += 360;
 				}
 				up(v) {
+					// Start or stop moving up
 					this.move.up = v;
 				}
 				down(v) {
+					// Start or stop moving down
 					this.move.down = v;
 				}
 				left(v) {
+					// Start or stop moving left
 					this.move.left = v;
 				}
 				right(v) {
+					// Start or stop moving right
 					this.move.right = v;
 				}
 				stop() {
+					// Stop moving
 					this.move.up = 0;
 					this.move.down = 0;
 					this.move.left = 0;
@@ -160,6 +169,7 @@
 			// The game objects:
 			var player = new Person(2.5, -7.5, -12, -24, 12, -0.5);
 			var opponent = new Person(-2.5, 7.5, -12, 0.5, 12, 24);
+			// Keep them in a list so we can easily iterate over them:
 			var objects = [player, opponent];
 			// The game state (current time, paused, etc.):
 			var paused = true;
@@ -247,7 +257,7 @@
 			}
 			function keydown(event) {
 				// Handle keydown events
-				console.debug(event.type, event.key, event.code);
+				console.debug(event.type, event);
 				switch (event.code) {
 					case "Space":
 						if (!paused) {
@@ -291,7 +301,7 @@
 			}
 			function keyup(event) {
 				// Handle keyup events
-				console.debug(event.type, event.key, event.code);
+				console.debug(event.type, event);
 				switch (event.code) {
 					case "KeyW":
 					case "ArrowUp":
@@ -320,33 +330,35 @@
 				// Handle mouse movement events
 				if (!paused) {
 					player.rotate(event.movementX);
-					console.debug(event.type, event.movementX, event.movementY);
 				}
 			});
 			window.addEventListener('mousedown', function(event) {
 				// Handle mouse button events
-				if (!paused) {
-					switch (event.button) {
-						case 0: // Left button
+				console.debug(event.type, event);
+				switch (event.button) {
+					case 0: // Left button
+						if (!paused) {
 							sound_swish.currentTime = 0;
 							sound_swish.play();
-							break;
-						case 2: // Right button
-							// Not used
-							break;
-					}
+						}
+						break;
+					case 2: // Right button
+						// Not used
+						break;
 				}
 			});
-			// Pause if the window loses focus:
+			// Pause if the user switches away from this browser tab:
 			window.addEventListener("blur", pause);
-			document.addEventListener('pointerlockchange', function() {
+			document.addEventListener('pointerlockchange', function(event) {
+				console.debug(event.type, event);
 				// Make sure to pause if the user presses escape
 				if (!paused && !document.pointerLockElement) {
 					pause();
 				}
 			});
 			// Resume if the user clicks on the pause popup:
-			document.getElementById("pause").addEventListener('click', resume);
+			// (the true parameter is so we also get to handle clicks on the text)
+			document.getElementById("pause").addEventListener('click', resume, true);
 			// Set the initial size of the canvas:
 			resize();
 			// Draw the couurt:
