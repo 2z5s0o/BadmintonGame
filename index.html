@@ -15,6 +15,29 @@
 				height: 100%;
 				overflow: hidden;
 			}
+			.left {
+				/* Format the left text box */
+				position: absolute;
+				top: 10%;
+				left: 10%;
+				transform: translate(-10%, -10%);
+				background-color: white;
+				color: black;
+				padding: 20px 40px;
+				border-radius: 15px;
+				text-align: left;
+				line-height: 1.5;
+			}
+			.left #valid {
+				/* Format the valid serves counter */
+				color: hsl(130, 90%, 30%);
+				font-weight: bold;
+			}
+			.left #foul {
+				/* Format the foul serves counter */
+				color: hsl(350, 80%, 50%);
+				font-weight: bold;
+			}
 			.popup {
 				/* Format the pause popup */
 				position: absolute;
@@ -36,6 +59,11 @@
 	</head>
 	<body>
 		<canvas id="canvas"></canvas><!-- This is where the game will be drawn -->
+		<div id="score" class="left">
+			<h2>Score</h2>
+			<p>Valid serves: <span id="valid">0</span></p>
+			<p>Foul serves: <span id="foul">0</span></p>
+		</div>
 		<div id="pause" class="popup"><!-- This is the pause popup -->
 			<h2>Paused</h2>
 			<p>Click here to resume</p>
@@ -201,6 +229,7 @@
 											    z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
 							this.shuttle.pos.z = 4;
 							this.shuttle.hit();
+							this.shuttle.servepos = {x: this.pos.x, y: this.pos.y};
 							this.state = "free";
 
 							var shuttle = new Shuttlecock(0, 0);
@@ -348,6 +377,7 @@
 				constructor(x, y) {
 					this.pos = {x: x, y: y, z: 0};
 					this.vel = {x: 0, y: 0, z: 0};
+					this.servepos = {x: 0, y: 0};
 					this.state = "held";
 					this.angle = undefined;
 					this.trajectory = [];
@@ -383,8 +413,34 @@
 							// Land in a random direction:
 							this.angle = Math.random() * Math.PI * 2;
 							this.state = "landed";
+							this.updatescore();
 						}
 						this.trajectory.push({...this.pos});
+					}
+				}
+				updatescore() {
+					if (this.servepos.y > -6.5 || this.servepos.y < -22) {
+						// Stood too far forwards or too far back
+						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+					} else if (this.pos.y < 6.5 || this.pos.y > 22) {
+						// Landed too far forwards or too far back
+						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+					} else if (this.servepos.x < -8.5 || this.servepos.x > 8.5) {
+						// Stood too far left or too far right
+						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+					} else if (this.pos.x < -8.5 || this.pos.x > 8.5) {
+						// Landed too far left or too far right
+						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+					} else {
+						var serveside = this.servepos.x < 0 ? "left" : "right";
+						var landingside = this.pos.x < 0 ? "left" : "right";
+						if (serveside != landingside) {
+							// Valid serve
+							document.getElementById("valid").innerText = parseInt(document.getElementById("valid").innerText) + 1;
+						} else {
+							// Foul serve
+							document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+						}
 					}
 				}
 				draw() {
@@ -416,11 +472,11 @@
 
 			// The game objects:
 			var player = new Person(2.5, -7.5, -12, -24, 12, -0.5);
-			var opponent = new Person(-2.5, 7.5, -12, 0.5, 12, 24);
+			// var opponent = new Person(-2.5, 7.5, -12, 0.5, 12, 24);
 			var shuttlecock = new Shuttlecock(0, 0);
 			player.hold(shuttlecock);
 			// Keep them in a list so we can easily iterate over them:
-			var objects = [player, opponent, shuttlecock];
+			var objects = [player, shuttlecock];
 			// The game state (current time, paused, etc.):
 			var paused = true;
 			var time;
@@ -464,7 +520,7 @@
 				// Draw the side view
 				if (canvas.width > 1200) {
 					var sidewidth = 400;
-					var sideheight = 300;
+					var sideheight = 200;
 					function xf(y, z) {
 						var scale = sidewidth / 48;
 						return [20 + scale * (y + 24), canvas.height - 20 - scale * z];
