@@ -12,10 +12,29 @@
 				height: 100%;
 				overflow: hidden;
 			}
+			#pause {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				background-color: rgba(0, 0, 0, 0.5);
+				color: white;
+				padding: 20px;
+				border-radius: 10px;
+				text-align: center;
+				display: none;
+			}
+			#pause.show {
+				display: block;
+			}
 		</style>
 	</head>
 	<body>
 		<canvas id="canvas"></canvas>
+		<div id="pause" class="show">
+			<p>Paused</p>
+			<p>Press P to resume</p>
+		</div>
 		<script>
 			// The canvas where we will draw the scene:
 			var canvas = document.getElementById('canvas');
@@ -94,11 +113,17 @@
 				right(v) {
 					this.move.right = v;
 				}
+				stop() {
+					this.move.up = 0;
+					this.move.down = 0;
+					this.move.left = 0;
+					this.move.right = 0;
+				}
 			}
 			class Shuttlecock {
 				constructor(x, y) {
-					this.pos = [x, y];
-					this.vel = [0, 0];
+					this.pos = {x: x, y: y};
+					this.vel = {x: 0, y: 0};
 					this.h = 1;
 					this.vh = 0;
 				}
@@ -163,40 +188,68 @@
 				}
 			}
 			function animate(newtime) {
-				if (time) {
-					// Calculate the time step
-					var dt = (newtime - time) / 1000;
-					//console.log('animate', dt);
-					// Simulate the objects
-					for (var obj of objects) {
-						obj.animate(dt);
-					}
-				}
+				var dt = (newtime - time) / 1000;
 				time = newtime;
-				draw();
 				if (animating) {
+					if (dt > 0) {
+						for (var obj of objects) {
+							obj.animate(dt);
+						}
+					}
+					draw();
 					// Request the next animation frame
 					requestAnimationFrame(animate);
 				}
+			}
+			function pause() {
+				// Pause the game
+				animating = false;
+				time = undefined;
+				player.stop();
+				document.exitPointerLock();
+				document.getElementById('pause').classList.add('show');
+			}
+			async function resume() {
+				// Resume the game
+				canvas.requestPointerLock();
+				document.getElementById('pause').classList.remove('show');
+				animating = true;
+				animate();
 			}
 			function keydown(event) {
 				// Handle keydown events
 				console.debug(event.type, event.key, event.code);
 				switch (event.code) {
 					case "KeyW":
+					case "ArrowUp":
 						player.up(1);
 						break;
 					case "KeyS":
+					case "ArrowDown":
 						player.down(1);
 						break;
 					case "KeyA":
+					case "ArrowLeft":
 						player.left(1);
 						break;
 					case "KeyD":
+					case "ArrowRight":
 						player.right(1);
 						break;
+					case "KeyP":
+						if (animating) {
+							// Pause the game
+							pause();
+						} else {
+							// Resume the game
+							resume();
+						}
+						break;
 					case "Escape":
-					    document.exitPointerLock();
+						if (animating) {
+							// Pause the game
+							pause();
+						}
 						break;
 				}
 			}
@@ -205,15 +258,19 @@
 				console.debug(event.type, event.key, event.code);
 				switch (event.code) {
 					case "KeyW":
+					case "ArrowUp":
 						player.up(0);
 						break;
 					case "KeyS":
+					case "ArrowDown":
 						player.down(0);
 						break;
 					case "KeyA":
+					case "ArrowLeft":
 						player.left(0);
 						break;
 					case "KeyD":
+					case "ArrowRight":
 						player.right(0);
 						break;
 				}
@@ -222,22 +279,15 @@
 			window.addEventListener('resize', resize);
 			window.addEventListener('keydown', keydown);
 			window.addEventListener('keyup', keyup);
-			canvas.addEventListener('click', function() {
-				// Request pointer lock on click
-				canvas.requestPointerLock();
-			});
+			window.addEventListener("blur", pause);
+			document.getElementById("pause").addEventListener('click', resume);
 			window.addEventListener('mousemove', function(event) {
-				// Handle mouse move events
-				if (document.pointerLockElement === canvas) {
-					// If the pointer is locked, move the camera
-					//camera.x -= event.movementX / 100;
-					//camera.y += event.movementY / 100;
+				if (animating) {
 					console.debug(event.type, event.movementX, event.movementY);
 				}
 			});
 			resize();
-			animating = true;
-			animate();
+			draw();
 		</script>
 	</body>
 </html>
