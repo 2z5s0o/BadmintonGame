@@ -211,9 +211,16 @@
 					if (this.pos.y < this.bounds.miny) this.pos.y = this.bounds.miny;
 					if (this.pos.y > this.bounds.maxy) this.pos.y = this.bounds.maxy;
 					if (this.shuttle) {
-						// Move the shuttlecock with the person:
-						this.shuttle.pos.x = this.pos.x;
-						this.shuttle.pos.y = this.pos.y;
+						if (this.shuttle && (this.state == "charging" || this.state == "swinging")) {
+							// Move the shuttlecock with the racket
+							this.shuttle.pos.x = this.pos.x + 2.5 * Math.sin(this.racketangle);
+							this.shuttle.pos.y = this.pos.y + 2.5 * Math.cos(this.racketangle);
+							this.shuttle.pos.z = 4;
+						} else {
+							// Move the shuttlecock with the person:
+							this.shuttle.pos.x = this.pos.x;
+							this.shuttle.pos.y = this.pos.y;
+						}
 					}
 					if (this.state == "charging") {
 						// Increase the power while charging:
@@ -234,8 +241,6 @@
 						}
 						if (this.state == "swinging" && this.shuttle && this.power < 0.5 * this.hitpower) {
 							// Hit the shuttlecock halfway through the swing
-							this.shuttle.pos = {x: this.pos.x + 2.5 * Math.sin(this.racketangle),
-								                y: this.pos.y + 2.5 * Math.cos(this.racketangle)};
 							var angle = this.racketangle;
 							var power = 30 * this.hitpower / 100;
 							if (this.swingtype() == "forehand") {
@@ -248,7 +253,6 @@
 							this.shuttle.vel = {x: power * Math.sin(angle),
 								                y: power * Math.cos(angle),
 											    z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
-							this.shuttle.pos.z = 4;
 							this.shuttle.hit();
 							this.shuttle.servepos = {x: this.pos.x, y: this.pos.y};
 							this.state = "free";
@@ -256,7 +260,7 @@
 							var shuttle = new Shuttlecock(0, 0);
 							objects.push(shuttle);
 							this.hold(shuttle);
-						} else if (this.power < 0) {
+						} else if (this.power <= 0) {
 							// When it gets to zero, reset the state
 							this.power = 0;
 							this.state = "free";
@@ -313,25 +317,17 @@
 					oval(this.pos.x, this.pos.y, 1, 1, colours.player);
 					// Draw the power bar
 					if (this.power > 0) {
-						rect(this.pos.x - 1, this.pos.y - 1.8, this.pos.x + 1, this.pos.y - 1.4, colours.powervbarbackground);
+						rect(this.pos.x - 1, this.pos.y - 1.8, this.pos.x + 1, this.pos.y - 1.4, colours.powerbarbackground);
 						var col = colours.powerbarswing;
 						if (this.state == "charging") {
 							col = colours.powerbarcharge;
 						}
 						rect(this.pos.x - 1, this.pos.y - 1.8, this.pos.x - 1 + this.power / 50, this.pos.y - 1.4, col);
 					}
-					if (this.shuttle) {
-						// Draw the shuttlecock
-						var [dx, dy] = [2.5 * Math.sin(this.racketangle), 2.5 * Math.cos(this.racketangle)];
-						if (this.state == "free") {
-							oval(this.pos.x, this.pos.y, 0.4, 0.4, colours.shuttle);
-							oval(this.pos.x, this.pos.y, 0.2, 0.2, colours.shuttletip);
-						} else if (this.state == "charging") {
-							oval(this.pos.x + dx, this.pos.y + dy, 0.4, 0.4, colours.shuttle);
-							oval(this.pos.x + dx, this.pos.y + dy, 0.3, 0.3, colours.shuttle1);
-							oval(this.pos.x + dx, this.pos.y + dy, 0.2, 0.2, colours.shuttle2);
-							oval(this.pos.x + dx, this.pos.y + dy, 0.1, 0.1, colours.shuttle3);
-						}
+					if (this.shuttle && this.state == "free") {
+						// Draw the shuttlecock icon on the player
+						oval(this.pos.x, this.pos.y, 0.4, 0.4, colours.shuttle);
+						oval(this.pos.x, this.pos.y, 0.2, 0.2, colours.shuttletip);
 					}
 				}
 				swingtype() {
@@ -366,6 +362,9 @@
 						this.state = "charging";
 						this.power = 0;
 						this.hitpower = 0;
+						if (this.shuttle) {
+							this.shuttle.state = "serving";
+						}
 					} else {
 						this.state = "swinging";
 						this.hitpower = this.power;
@@ -434,8 +433,13 @@
 						if (this.pos.z < 0) {
 							this.pos.z = 0;
 							this.vel = {x: 0, y: 0, z: 0};
-							// Land in a random direction:
-							this.angle = Math.random() * Math.PI * 2;
+							if (Math.abs(this.pos.y) > 1) {
+								// Not near the net, land in a random direction:
+								this.angle = Math.random() * Math.PI * 2;
+							} else {
+								// Near the net, make sure points away from the net, otherwise it might cross it:
+								this.angle = Math.random() * Math.PI + (this.pos.y > 0 ? Math.PI / 2 : -Math.PI / 2);
+							}
 							this.state = "landed";
 							this.updatescore();
 						}
@@ -485,7 +489,10 @@
 							oval(this.pos.x, this.pos.y, 0.3, 0.3, colours.shuttletip);
 						} else {
 							// It's falling downwards, draw it as a circle
-							oval(this.pos.x, this.pos.y, 0.5, 0.5, colours.shuttle);
+							oval(this.pos.x, this.pos.y, 0.4, 0.4, colours.shuttle);
+							oval(this.pos.x, this.pos.y, 0.3, 0.3, colours.shuttle1);
+							oval(this.pos.x, this.pos.y, 0.2, 0.2, colours.shuttle2);
+							oval(this.pos.x, this.pos.y, 0.1, 0.1, colours.shuttle3);
 						}
 					}
 				}
