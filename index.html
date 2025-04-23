@@ -182,7 +182,6 @@
 					this.pos = {x: x, y: y};
 					this.bounds = {minx: minx, miny: miny, maxx: maxx, maxy: maxy};
 					this.move = {up: 0, down: 0, left: 0, right: 0};
-					this.speed = 10;
 					this.racketangle = 0;
 					this.swingangle = 0; // extra angle from swinging the racket
 					this.swingback = 1; // how much to pull racket back during underhand swing
@@ -192,28 +191,30 @@
 					this.shuttle = undefined;
 				}
 				animate(dt) {
-					// Animate the person
-					var dx = 0, dy = 0;
+					// Update the person's state after a time step of dt
+					var vx = 0, vy = 0; // Velocity in world coordinates
 					// Check if the person is moving:
-					if (this.move.down)  dy -= 1.2;
-					if (this.move.up)    dy += 1.8;
-					if (this.move.left)  dx -= 1.4;
-					if (this.move.right) dx += 1.4;
-					// Normalize the movement vector to have a length of 1:
-					if (dx != 0 && dy != 0) {
-						dx *= 0.707;
-						dy *= 0.707;
+					if (this.move.down)  vy -= 12;
+					if (this.move.up)    vy += 18;
+					if (this.move.left)  vx -= 14;
+					if (this.move.right) vx += 14;
+					// If moving diagonally, scale down by sqrt(2):
+					if (vx != 0 && vy != 0) {
+						vx /= Math.sqrt(2);
+						vy /= Math.sqrt(2);
 					}
 					// Move the person:
-					this.pos.x += dx * this.speed * dt;
-					this.pos.y += dy * this.speed * dt;
+					this.pos.x += vx * dt;
+					this.pos.y += vy * dt;
 					// Make sure the person stays within the bounds:
 					if (this.pos.x < this.bounds.minx) this.pos.x = this.bounds.minx;
 					if (this.pos.x > this.bounds.maxx) this.pos.x = this.bounds.maxx;
 					if (this.pos.y < this.bounds.miny) this.pos.y = this.bounds.miny;
 					if (this.pos.y > this.bounds.maxy) this.pos.y = this.bounds.maxy;
+
 					if (this.shuttle) {
-						if (this.shuttle && (this.state == "charging" || this.state == "swinging")) {
+						// If we have a shuttlecock, make sure it moves with us
+						if (this.state == "charging" || this.state == "swinging") {
 							// Move the shuttlecock with the racket
 							this.shuttle.pos.x = this.pos.x + 2.5 * Math.sin(this.racketangle);
 							this.shuttle.pos.y = this.pos.y + 2.5 * Math.cos(this.racketangle);
@@ -224,78 +225,88 @@
 							this.shuttle.pos.y = this.pos.y;
 						}
 					}
+
+					this.swingangle = 0;
 					if (this.state == "charging") {
-						// Increase the power while charging:
+						// Charging up the racket power
 						if (this.swingtype() == "underhand") {
-							this.power += 200 * dt;
+							this.power += 200 * dt; // underhand charges faster
 						} else {
 							this.power += 100 * dt;
 						}
 						if (this.power > 100) {
-							this.power = 100;
+							this.power = 100; // Make sure power stays within range
 						}
-					} else if (this.swingtype() == "underhand") {
-						this.power -= 400 * dt;
-					} else {
-						this.power -= 200 * dt;
-					}
-					this.swingangle = 0;
-					if (this.swingtype() == "forehand") {
-						if (this.state == "charging") {
+
+						if (this.swingtype() == "forehand") {
 							this.swingangle = degrees(40) * this.power / 100;
-						} else if (this.state == "swinging") {
+						} else if (this.swingtype() == "backhand") {
+							this.swingangle = -degrees(40) * this.power / 100;
+						} else if (this.swingtype() == "underhand") {
+							this.swingback = 1 - this.power / 200;
+						}
+					} else {
+						// Swinging the racket (to hit the shuttlecock)
+						if (this.swingtype() == "underhand") {
+							this.power -= 400 * dt;
+						} else {
+							this.power -= 200 * dt;
+						}
+						if (this.power < 0) {
+							this.power = 0; // Make sure power stays within range
+						}
+					}
+					if (this.state == "swinging") {
+						if (this.swingtype() == "forehand") {
 							var t = Math.pow(this.power / this.hitpower, 4);
 							var maxa = degrees(40) * this.hitpower / 100;
 							this.swingangle = (3 * t - 2) * maxa;
-						}
-					} else if (this.swingtype() == "backhand") {
-						if (this.state == "charging") {
-							this.swingangle = -degrees(40) * this.power / 100;
-						} else if (this.state == "swinging") {
+						} else if (this.swingtype() == "backhand") {
 							var t = Math.pow(this.power / this.hitpower, 4);
 							var maxa = degrees(40) * this.hitpower / 100;
 							this.swingangle = -(3 * t - 2) * maxa;
-						}
-					} else if (this.swingtype() == "underhand") {
-						if (this.state == "charging") {
-							this.swingback = 1 - this.power / 200;
-						} else if (this.state == "swinging") {
-							var t = Math.pow(this.power / this.hitpower, 4);
+						} else if (this.swingtype() == "underhand") {
+							var t = this.power == 0 ? 0 : Math.pow(this.power / this.hitpower, 4);
 							this.swingback = 1 - t * this.hitpower / 200;
 						}
-					}
-					if (this.state == "swinging" && this.shuttle && this.power < 0.5 * this.hitpower) {
-						// Hit the shuttlecock halfway through the swing
-						var angle = this.racketangle;
-						var power = 30 * this.hitpower / 100;
-						if (this.swingtype() == "forehand") {
-							power = 70 * this.hitpower / 100;
-							angle -= degrees(90);
-						} else if (this.swingtype() == "backhand") {
-							power = 70 * this.hitpower / 100;
-							angle += degrees(90);
+						if (this.shuttle && this.power < 0.75 * this.hitpower) {
+							// Hit the shuttlecock halfway through the swing
+							var angle = this.racketangle;
+							var power = 30 * this.hitpower / 100;
+							if (this.swingtype() == "forehand") {
+								power = 70 * this.hitpower / 100;
+								angle -= degrees(90);
+							} else if (this.swingtype() == "backhand") {
+								power = 70 * this.hitpower / 100;
+								angle += degrees(90);
+							}
+							this.shuttle.vel = {x: power * Math.sin(angle),
+												y: power * Math.cos(angle),
+												z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
+							this.shuttle.hit();
+							this.shuttle.servepos = {x: this.pos.x, y: this.pos.y};
+							//this.state = "free";
+							this.shuttle = undefined;
 						}
-						this.shuttle.vel = {x: power * Math.sin(angle),
-											y: power * Math.cos(angle),
-											z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
-						this.shuttle.hit();
-						this.shuttle.servepos = {x: this.pos.x, y: this.pos.y};
-						this.state = "free";
-
-						var shuttle = new Shuttlecock(0, 0);
-						objects.push(shuttle);
-						this.hold(shuttle);
-					} else if (this.power <= 0) {
-						// When it gets to zero, reset the state
-						this.power = 0;
-						this.state = "free";
-						var a = 2 * degrees(40) * this.hitpower / 100;
-						if (this.swingtype() == "forehand") {
-							this.racketangle -= a;
-						} else if (this.swingtype() == "backhand") {
-							this.racketangle += a;
+						if (this.power <= 0) {
+							// When the swing angle gets to zero, reset the state
+							var a = 2 * degrees(40) * this.hitpower / 100;
+							// Leave the racket at the end of the swing
+							if (this.swingtype() == "forehand") {
+								this.racketangle -= a;
+							} else if (this.swingtype() == "backhand") {
+								this.racketangle += a;
+							}
+							this.hitpower = 0;
+							this.swingangle = 0;
+							this.state = "free";
+							if (!this.shuttle) {
+								// Create a new shuttlecock to hold
+								var shuttle = new Shuttlecock(0, 0);
+								objects.push(shuttle);
+								this.hold(shuttle);
+							}
 						}
-						this.hitpower = 0;
 					}
 				}
 				draw() {
@@ -347,8 +358,8 @@
 				moveracket(deltax, deltay) {
 					// Rotate the racket
 					if (this.state == "free") {
-						this.racketangle += deltax / 300;
 						this.racketangle += deltay / 300 * Math.sin(this.racketangle);
+						this.racketangle += deltax / 300;
 						if (this.racketangle > degrees(120)) this.racketangle = degrees(120);
 						if (this.racketangle < -degrees(120)) this.racketangle = -degrees(120);
 					}
