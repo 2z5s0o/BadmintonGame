@@ -284,6 +284,15 @@
 												y: power * Math.cos(angle),
 												z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
 							this.shuttle.hit();
+							if (this.swingtype() == "forehand") {
+								sound_hit.volume = 1.0 * this.hitpower / 100;
+							} else if (this.swingtype() == "backhand") {
+								sound_hit.volume = 0.8 * this.hitpower / 100;
+							} else {
+								sound_hit.volume = 0.5 * this.hitpower / 100;
+							}
+							sound_hit.currentTime = 0;
+							sound_hit.play();
 							this.shuttle.servepos = {x: this.pos.x, y: this.pos.y};
 							//this.state = "free";
 							this.shuttle = undefined;
@@ -375,6 +384,13 @@
 					} else {
 						this.state = "swinging";
 						this.hitpower = this.power;
+						if (this.swingtype() == "forehand") {
+							sound_swish.volume = 1.0 * this.power / 100;
+						} else if (this.swingtype() == "backhand") {
+							sound_swish.volume = 0.8 * this.power / 100;
+						} else {
+							sound_swish.volume = 0.5 * this.power / 100;
+						}
 						sound_swish.currentTime = 0;
 						sound_swish.play();
 					}
@@ -678,13 +694,6 @@
 				// Handle keydown events
 				console.debug(event.type, event);
 				switch (event.code) {
-					case "Space":
-						if (!paused) {
-							// Play the sound
-							sound_hit.currentTime = 0;
-							sound_hit.play();
-						}
-						break;
 					case "KeyW":
 					case "ArrowUp":
 						player.up(1);
