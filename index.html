@@ -109,10 +109,18 @@
 				trajectory: "hsla(0, 0%, 0%, 0.2)",
 			}
 			// Load the sound files:
-			var sound_swish = new Audio("swish.mp3");
-			var sound_hit = new Audio("hit.mp3");
-			var sound_ding = new Audio("ding.mp3");
-			var sound_buzz = new Audio("buzz.mp3");
+			var sounds = {
+				swish: new Audio("swish.mp3"),
+				hit: new Audio("hit.mp3"),
+				ding: new Audio("ding.mp3"),
+				buzz: new Audio("buzz.mp3"),
+				play: function(name, volume=1) {
+					// Play the sound file
+					this[name].currentTime = 0;
+					this[name].volume = volume;
+					this[name].play();
+				}
+			}
 			// The canvas where we will draw the scene:
 			var canvas = document.getElementById('canvas');
 			// The 2D context of the canvas, used for drawing on it:
@@ -197,8 +205,80 @@
 					ctx.stroke();
 				}
 			}
-			class Person {
+			class Entity {
+				// Base class for a game object that has a state that can be animated and drawn
+				animate(dt) {
+					// Update the entity's state after a time step of dt
+				}
+				draw() {
+					// Draw the entity
+				}
+				drawsideview(xf) {
+					// Draw the entity in side view
+				}
+			}
+			class Court extends Entity {
+				draw() {
+					// Reference: https://www.dimensions.com/element/badminton-court
+					// Clearance around the court
+					rect(-12, -24, 12, 24, colours.clearance);
+					// Court
+					rect(-10, -22, 10, 22, colours.court);
+					ctx.strokeStyle = colours.courtline;
+					var thick = 0.25;
+					var thin = 0.15
+					line(-10, -22, -10, 22, thick);
+					line(10, -22, 10, 22, thick);
+					line(-10, -22, 10, -22, thick);
+					line(-10, 22, 10, 22, thick);
+
+					line(-8.5, -22, -8.5, 22, thin);
+					line(8.5, -22, 8.5, 22, thin);
+					line(-10, -19.5, 10, -19.5, thin);
+					line(-10, -6.5, 10, -6.5, thin);
+					line(-10, 6.5, 10, 6.5, thin);
+					line(-10, 19.5, 10, 19.5, thin);
+					line(0, -22, 0, -6.5, thin);
+					line(0, 22, 0, 6.5, thin);
+					// Net
+					ctx.strokeStyle = colours.net;
+					line(-10, 0, 10, 0, thick);
+				}
+				drawsideview(xf) {
+					// Draw the clearance area
+					ctx.strokeStyle = colours.clearance;
+					ctx.lineWidth = 4;
+					ctx.beginPath();
+					ctx.moveTo(...xf(-24, -0.1));
+					ctx.lineTo(...xf(24, -0.1));
+					ctx.closePath();
+					ctx.stroke();
+					// Draw the court area
+					ctx.strokeStyle = colours.court;
+					ctx.beginPath();
+					ctx.moveTo(...xf(-22, -0.1));
+					ctx.lineTo(...xf(22, -0.1));
+					ctx.closePath();
+					ctx.stroke();
+					ctx.fillStyle = colours.courtline;
+					// Draw the court lines
+					for (var p of [-22, -19.5, -6.5, 6.5, 19.5, 22]) {
+						var [x, y] = xf(p, -0.1);
+						ctx.fillRect(x - 2, y - 2, 4, 4);
+					}
+					// Draw the net
+					ctx.strokeStyle = colours.net;
+					ctx.lineWidth = 5;
+					ctx.beginPath();
+					ctx.moveTo(...xf(0, 0));
+					ctx.lineTo(...xf(0, 5));
+					ctx.closePath();
+					ctx.stroke();
+				}
+			}
+			class Person extends Entity {
 				constructor(x, y, minx, miny, maxx, maxy) {
+					super();
 					this.pos = {x: x, y: y};
 					this.bounds = {minx: minx, miny: miny, maxx: maxx, maxy: maxy};
 					this.move = {up: 0, down: 0, left: 0, right: 0};
@@ -304,15 +384,13 @@
 												y: power * Math.cos(angle),
 												z: this.hitpower / 100 * (this.swingtype() == "underhand" ? 30 : 20)};
 							this.shuttle.hit();
+							var volume = 0.5;
 							if (this.swingtype() == "forehand") {
-								sound_hit.volume = 1.0 * this.hitpower / 100;
+								volume = 1.0 * this.hitpower / 100;
 							} else if (this.swingtype() == "backhand") {
-								sound_hit.volume = 0.8 * this.hitpower / 100;
-							} else {
-								sound_hit.volume = 0.5 * this.hitpower / 100;
+								volume = 0.8 * this.hitpower / 100;
 							}
-							sound_hit.currentTime = 0;
-							sound_hit.play();
+							sounds.play("hit", volume);
 							this.shuttle.servepos = {x: this.pos.x, y: this.pos.y};
 							//this.state = "free";
 							this.shuttle = undefined;
@@ -366,6 +444,10 @@
 						oval(this.pos.x, this.pos.y, 0.2, 0.2, colours.shuttletip);
 					}
 				}
+				drawsideview(xf) {
+					// No need to draw the person in side view
+					// because the active shuttlecock is drawn in red already
+				}
 				swingtype() {
 					// Return the swing type based on the racket angle
 					if (this.racketangle > degrees(30)) {
@@ -404,15 +486,13 @@
 					} else {
 						this.state = "swinging";
 						this.hitpower = this.power;
+						var volume = 0.5;
 						if (this.swingtype() == "forehand") {
-							sound_swish.volume = 1.0 * this.power / 100;
+							volume = 1.0 * this.power / 100;
 						} else if (this.swingtype() == "backhand") {
-							sound_swish.volume = 0.8 * this.power / 100;
-						} else {
-							sound_swish.volume = 0.5 * this.power / 100;
+							volume = 0.8 * this.power / 100;
 						}
-						sound_swish.currentTime = 0;
-						sound_swish.play();
+						sounds.play("swish", volume);
 					}
 				}
 				up(v) {
@@ -439,8 +519,9 @@
 					this.move.right = 0;
 				}
 			}
-			class Shuttlecock {
+			class Shuttlecock extends Entity{
 				constructor(x, y) {
+					super();
 					this.pos = {x: x, y: y, z: 0};
 					this.vel = {x: 0, y: 0, z: 0};
 					this.servepos = {x: 0, y: 0};
@@ -489,6 +570,9 @@
 						this.trajectory.push({...this.pos});
 					}
 				}
+				hit() {
+					this.state = "flying";
+				}
 				updatescore() {
 					if (this.servepos.y > -6.5 || this.servepos.y < -22) {
 						// Stood too far forwards or too far back
@@ -515,15 +599,13 @@
 					}
 				}
 				updatevalid() {
-					sound_ding.currentTime = 0;
-					sound_ding.play();
+					sounds.play("ding");
 					document.getElementById("valid").innerText = parseInt(document.getElementById("valid").innerText) + 1;
 					document.getElementById("lastvalid").classList.add("visible");
 					document.getElementById("lastfoul").classList.remove("visible");
 				}
 				updatefoul() {
-					sound_buzz.currentTime = 0;
-					sound_buzz.play();
+					sounds.play("buzz");
 					document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
 					document.getElementById("lastvalid").classList.remove("visible");
 					document.getElementById("lastfoul").classList.add("visible");
@@ -553,12 +635,35 @@
 						}
 					}
 				}
-				hit() {
-					this.state = "flying";
+				drawsideview(xf) {
+					if (this.state == "flying") {
+						// The active (flying) shuttlecock is red
+						ctx.fillStyle = colours.player;
+					} else {
+						// All the previous ones are grey
+						ctx.fillStyle = colours.trajectory;
+					}
+					// Draw a dot for every point in the trajectory
+					for (var pos of this.trajectory) {
+						if (Math.abs(pos.y) > 24) continue;
+						var [x, y] = xf(pos.y, pos.z);
+						ctx.beginPath();
+						ctx.ellipse(x - 1, y - 1, 2, 2, 0, 0, Math.PI * 2);
+						ctx.fill();
+					}
+					// Draw the final position of the shuttlecock bigger
+					if (Math.abs(this.pos.y) <= 24) {
+						var [x, y] = xf(this.pos.y, this.pos.z);
+						if (this.state == "held") ctx.fillStyle = colours.player;
+						ctx.beginPath();
+						ctx.ellipse(x - 2, y - 2, 4, 4, 0, 0, Math.PI * 2);
+						ctx.fill();
+					}
 				}
 			}
 
 			// The game objects:
+			var court = new Court();
 			var player = new Person(2.5, -7.5, -12, -24, 12, -0.5);
 			// var opponent = new Person(-2.5, 7.5, -12, 0.5, 12, 24);
 			var shuttlecock = new Shuttlecock(0, 0);
@@ -571,34 +676,14 @@
 
 			function draw() {
 				// Draw the scene
-				// Reference: https://www.dimensions.com/element/badminton-court
+				// Clear the canvas
 				ctx.clearRect(0, 0, canvas.width, canvas.height);
 				// Background
 				ctx.fillStyle = colours.background;
 				ctx.fillRect(0, 0, canvas.width, canvas.height);
-				// Clearance around the court
-				rect(-12, -24, 12, 24, colours.clearance);
-				// Court
-				rect(-10, -22, 10, 22, colours.court);
-				ctx.strokeStyle = colours.courtline;
-				var thick = 0.25;
-				var thin = 0.15
-				line(-10, -22, -10, 22, thick);
-				line(10, -22, 10, 22, thick);
-				line(-10, -22, 10, -22, thick);
-				line(-10, 22, 10, 22, thick);
 
-				line(-8.5, -22, -8.5, 22, thin);
-				line(8.5, -22, 8.5, 22, thin);
-				line(-10, -19.5, 10, -19.5, thin);
-				line(-10, -6.5, 10, -6.5, thin);
-				line(-10, 6.5, 10, 6.5, thin);
-				line(-10, 19.5, 10, 19.5, thin);
-				line(0, -22, 0, -6.5, thin);
-				line(0, 22, 0, 6.5, thin);
-				// Net
-				ctx.strokeStyle = colours.net;
-				line(-10, 0, 10, 0, thick);
+				// Draw the court
+				court.draw();
 
 				// Draw all the shuttlecocks
 				for (var shuttle of shuttlecocks) {
@@ -620,60 +705,13 @@
 					// Draw the side view background
 					ctx.fillStyle = colours.sideview;
 					ctx.fillRect(20, canvas.height - sideheight - 20, sidewidth, sideheight);
-					// Draw the clearance area
-					ctx.strokeStyle = colours.clearance;
-					ctx.lineWidth = 4;
-					ctx.beginPath();
-					ctx.moveTo(...xf(-24, -0.1));
-					ctx.lineTo(...xf(24, -0.1));
-					ctx.closePath();
-					ctx.stroke();
-					// Draw the court area
-					ctx.strokeStyle = colours.court;
-					ctx.beginPath();
-					ctx.moveTo(...xf(-22, -0.1));
-					ctx.lineTo(...xf(22, -0.1));
-					ctx.closePath();
-					ctx.stroke();
-					ctx.fillStyle = colours.courtline;
-					// Draw the court lines
-					for (var p of [-22, -19.5, -6.5, 6.5, 19.5, 22]) {
-						var [x, y] = xf(p, -0.1);
-						ctx.fillRect(x - 2, y - 2, 4, 4);
-					}
-					// Draw the net
-					ctx.strokeStyle = colours.net;
-					ctx.lineWidth = 5;
-					ctx.beginPath();
-					ctx.moveTo(...xf(0, 0));
-					ctx.lineTo(...xf(0, 5));
-					ctx.closePath();
-					ctx.stroke();
+					// Draw the court and net:
+					court.drawsideview(xf);
 					// Draw the trajectories of the shuttlecocks
 					for (var shuttle of shuttlecocks) {
-						if (shuttle.state == "flying") {
-							// The active (flying) shuttlecock is red
-							ctx.fillStyle = colours.player;
-						} else {
-							// All the previous ones are grey
-							ctx.fillStyle = colours.trajectory;
-						}
-						// Draw a dot for every point in the trajectory
-						for (var pos of shuttle.trajectory) {
-							if (Math.abs(pos.y) > 24) continue;
-							var [x, y] = xf(pos.y, pos.z);
-							ctx.beginPath();
-							ctx.ellipse(x - 1, y - 1, 2, 2, 0, 0, Math.PI * 2);
-							ctx.fill();
-						}
-						// Draw the final position of the shuttlecock bigger
-						if (Math.abs(shuttle.pos.y) > 24) continue;
-						var [x, y] = xf(shuttle.pos.y, shuttle.pos.z);
-						if (shuttle.state == "held") ctx.fillStyle = colours.player;
-						ctx.beginPath();
-						ctx.ellipse(x - 2, y - 2, 4, 4, 0, 0, Math.PI * 2);
-						ctx.fill();
+						shuttle.drawsideview(xf);
 					}
+					player.drawsideview(xf);
 				}
 			}
 			function animate(newtime) {
