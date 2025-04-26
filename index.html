@@ -459,7 +459,7 @@
 						this.vel.z -= 0.8 * this.vel.z * dt;
 						this.vel.x -= 0.8 * this.vel.x * dt;
 						this.vel.y -= 0.8 * this.vel.y * dt;
-						if (Math.sign(oldy) != Math.sign(this.pos.y)) {
+						if (Math.sign(oldy) != Math.sign(this.pos.y) && Math.abs(this.pos.x) <= 10) {
 							// The shuttlecock crossed the net
 							if (this.pos.z < 5) {
 								this.pos.y = oldy;
@@ -598,7 +598,7 @@
 				line(0, 22, 0, 6.5, thin);
 				// Net
 				ctx.strokeStyle = colours.net;
-				line(-11, 0, 11, 0, thick);
+				line(-10, 0, 10, 0, thick);
 
 				// Draw all the shuttlecocks
 				for (var shuttle of shuttlecocks) {
