@@ -314,7 +314,7 @@
 							if (!this.shuttle) {
 								// Create a new shuttlecock to hold
 								var shuttle = new Shuttlecock(0, 0);
-								objects.push(shuttle);
+								shuttlecocks.push(shuttle);
 								this.hold(shuttle);
 							}
 						}
@@ -544,7 +544,7 @@
 			var shuttlecock = new Shuttlecock(0, 0);
 			player.hold(shuttlecock);
 			// Keep them in a list so we can easily iterate over them:
-			var objects = [player, shuttlecock];
+			var shuttlecocks = [shuttlecock];
 			// The game state (current time, paused, etc.):
 			var paused = true;
 			var time;
@@ -580,10 +580,13 @@
 				ctx.strokeStyle = colours.net;
 				line(-11, 0, 11, 0, thick);
 
-				// Draw all the objects
-				for (var obj of objects) {
-					obj.draw();
+				// Draw all the shuttlecocks
+				for (var shuttle of shuttlecocks) {
+					shuttle.draw();
 				}
+
+				// Draw the player
+				player.draw();
 
 				// Draw the side view if the browser window is wide enough
 				if (canvas.width > 1200) {
@@ -627,9 +630,8 @@
 					ctx.closePath();
 					ctx.stroke();
 					// Draw the trajectories of the shuttlecocks
-					for (var obj of objects) {
-						if (!(obj instanceof Shuttlecock)) continue;
-						if (obj.state == "flying") {
+					for (var shuttle of shuttlecocks) {
+						if (shuttle.state == "flying") {
 							// The active (flying) shuttlecock is red
 							ctx.fillStyle = colours.player;
 						} else {
@@ -637,7 +639,7 @@
 							ctx.fillStyle = colours.trajectory;
 						}
 						// Draw a dot for every point in the trajectory
-						for (var pos of obj.trajectory) {
+						for (var pos of shuttle.trajectory) {
 							if (Math.abs(pos.y) > 24) continue;
 							var [x, y] = xf(pos.y, pos.z);
 							ctx.beginPath();
@@ -645,9 +647,9 @@
 							ctx.fill();
 						}
 						// Draw the final position of the shuttlecock bigger
-						if (Math.abs(obj.pos.y) > 24) continue;
-						var [x, y] = xf(obj.pos.y, obj.pos.z);
-						if (obj.state == "held") ctx.fillStyle = colours.player;
+						if (Math.abs(shuttle.pos.y) > 24) continue;
+						var [x, y] = xf(shuttle.pos.y, shuttle.pos.z);
+						if (shuttle.state == "held") ctx.fillStyle = colours.player;
 						ctx.beginPath();
 						ctx.ellipse(x - 2, y - 2, 4, 4, 0, 0, Math.PI * 2);
 						ctx.fill();
@@ -661,10 +663,11 @@
 				if (!paused) {
 					// Only animate if not paused
 					if (dt > 0) {
-						for (var obj of objects) {
+						for (var shuttle of shuttlecocks) {
 							// Animate each object
-							obj.animate(dt);
+							shuttle.animate(dt);
 						}
+						player.animate(dt);
 					}
 					// Draw the new scene
 					draw();
