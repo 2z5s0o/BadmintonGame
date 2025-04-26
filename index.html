@@ -38,6 +38,24 @@
 				color: hsl(350, 80%, 50%);
 				font-weight: bold;
 			}
+			.left #lastvalid {
+				/* Format the last valid serves dot */
+				color: hsl(130, 90%, 30%);
+				visibility: hidden;
+			}
+			.left #lastfoul {
+				/* Format the last foul serves dot */
+				color: hsl(350, 80%, 50%);
+				visibility: hidden;
+			}
+			.left #lastvalid.visible {
+				/* Show the last valid serves dot */
+				visibility: visible;
+			}
+			.left #lastfoul.visible {
+				/* Show the last valid serves dot */
+				visibility: visible;
+			}
 			.popup {
 				/* Format the pause popup */
 				position: absolute;
@@ -61,8 +79,8 @@
 		<canvas id="canvas"></canvas><!-- This is where the game will be drawn -->
 		<div id="score" class="left">
 			<h2>Score</h2>
-			<p>Valid serves: <span id="valid">0</span></p>
-			<p>Foul serves: <span id="foul">0</span></p>
+			<p><span id="lastvalid">● </span>Valid serves: <span id="valid">0</span></p>
+			<p><span id="lastfoul">● </span>Foul serves: <span id="foul">0</span></p>
 		</div>
 		<div id="pause" class="popup"><!-- This is the pause popup -->
 			<h2>Paused</h2>
@@ -455,7 +473,7 @@
 						if (this.vel.x > 0 || this.vel.y > 0) {
 							this.angle = Math.atan2(this.vel.x, this.vel.y);
 						}
-						if (this.pos.z < 0) {
+						if (this.pos.z <= 0) {
 							this.pos.z = 0;
 							this.vel = {x: 0, y: 0, z: 0};
 							if (Math.abs(this.pos.y) > 1) {
@@ -474,39 +492,41 @@
 				updatescore() {
 					if (this.servepos.y > -6.5 || this.servepos.y < -22) {
 						// Stood too far forwards or too far back
-						sound_buzz.currentTime = 0;
-						sound_buzz.play();
-						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+						this.updatefoul();
 					} else if (this.pos.y < 6.5 || this.pos.y > 22) {
 						// Landed too far forwards or too far back
-						sound_buzz.currentTime = 0;
-						sound_buzz.play();
-						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+						this.updatefoul();
 					} else if (this.servepos.x < -8.5 || this.servepos.x > 8.5) {
 						// Stood too far left or too far right
-						sound_buzz.currentTime = 0;
-						sound_buzz.play();
-						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+						this.updatefoul();
 					} else if (this.pos.x < -8.5 || this.pos.x > 8.5) {
 						// Landed too far left or too far right
-						sound_buzz.currentTime = 0;
-						sound_buzz.play();
-						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+						this.updatefoul();
 					} else {
 						var serveside = this.servepos.x < 0 ? "left" : "right";
 						var landingside = this.pos.x < 0 ? "left" : "right";
 						if (serveside != landingside) {
 							// Valid serve
-							sound_ding.currentTime = 0;
-							sound_ding.play();
-							document.getElementById("valid").innerText = parseInt(document.getElementById("valid").innerText) + 1;
+							this.updatevalid();
 						} else {
 							// Foul serve
-							sound_buzz.currentTime = 0;
-							sound_buzz.play();
-							document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+							this.updatefoul();
 						}
 					}
+				}
+				updatevalid() {
+					sound_ding.currentTime = 0;
+					sound_ding.play();
+					document.getElementById("valid").innerText = parseInt(document.getElementById("valid").innerText) + 1;
+					document.getElementById("lastvalid").classList.add("visible");
+					document.getElementById("lastfoul").classList.remove("visible");
+				}
+				updatefoul() {
+					sound_buzz.currentTime = 0;
+					sound_buzz.play();
+					document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
+					document.getElementById("lastvalid").classList.remove("visible");
+					document.getElementById("lastfoul").classList.add("visible");
 				}
 				draw() {
 					// Draw the shuttlecock
