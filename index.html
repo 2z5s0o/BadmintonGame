@@ -93,6 +93,8 @@
 			// Load the sound files:
 			var sound_swish = new Audio("swish.mp3");
 			var sound_hit = new Audio("hit.mp3");
+			var sound_ding = new Audio("ding.mp3");
+			var sound_buzz = new Audio("buzz.mp3");
 			// The canvas where we will draw the scene:
 			var canvas = document.getElementById('canvas');
 			// The 2D context of the canvas, used for drawing on it:
@@ -472,24 +474,36 @@
 				updatescore() {
 					if (this.servepos.y > -6.5 || this.servepos.y < -22) {
 						// Stood too far forwards or too far back
+						sound_buzz.currentTime = 0;
+						sound_buzz.play();
 						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
 					} else if (this.pos.y < 6.5 || this.pos.y > 22) {
 						// Landed too far forwards or too far back
+						sound_buzz.currentTime = 0;
+						sound_buzz.play();
 						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
 					} else if (this.servepos.x < -8.5 || this.servepos.x > 8.5) {
 						// Stood too far left or too far right
+						sound_buzz.currentTime = 0;
+						sound_buzz.play();
 						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
 					} else if (this.pos.x < -8.5 || this.pos.x > 8.5) {
 						// Landed too far left or too far right
+						sound_buzz.currentTime = 0;
+						sound_buzz.play();
 						document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
 					} else {
 						var serveside = this.servepos.x < 0 ? "left" : "right";
 						var landingside = this.pos.x < 0 ? "left" : "right";
 						if (serveside != landingside) {
 							// Valid serve
+							sound_ding.currentTime = 0;
+							sound_ding.play();
 							document.getElementById("valid").innerText = parseInt(document.getElementById("valid").innerText) + 1;
 						} else {
 							// Foul serve
+							sound_buzz.currentTime = 0;
+							sound_buzz.play();
 							document.getElementById("foul").innerText = parseInt(document.getElementById("foul").innerText) + 1;
 						}
 					}
